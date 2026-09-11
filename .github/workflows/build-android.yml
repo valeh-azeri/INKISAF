@@ -19,6 +19,13 @@ jobs:
         with:
           dotnet-version: "8.0.404"
 
+      - name: Diagnose SDK versions
+        run: |
+          echo "which dotnet: $(which dotnet)"
+          dotnet --version
+          dotnet --list-sdks
+          ls /usr/share/dotnet/packs 2>&1 | grep -i android || echo "no android packs found"
+
       - name: Restrict TargetFrameworks to android-only for this CI checkout
         run: |
           sed -i \
