@@ -19,12 +19,10 @@ jobs:
         with:
           dotnet-version: "8.0.404"
 
-      - name: Diagnose SDK versions
+      - name: Pin the SDK band actions/setup-dotnet just installed
         run: |
-          echo "which dotnet: $(which dotnet)"
+          echo '{ "sdk": { "version": "8.0.404", "rollForward": "latestFeature" } }' > global.json
           dotnet --version
-          dotnet --list-sdks
-          ls /usr/share/dotnet/packs 2>&1 | grep -i android || echo "no android packs found"
 
       - name: Restrict TargetFrameworks to android-only for this CI checkout
         run: |
