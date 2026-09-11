@@ -1,5 +1,6 @@
 @page "/duas"
 @inject ApiClient Api
+@inject IJSRuntime JS
 
 <div class="oi-topbar" style="margin:-16px -16px 16px -16px;">
     <div class="title">Dualar</div>
@@ -43,12 +44,24 @@ else
                 }
                 else
                 {
-                    <div dir="rtl" style="font-size:19px;line-height:1.9;margin:10px 0;color:var(--green-900);">@dua.ArabicText</div>
+                    @if (!string.IsNullOrEmpty(dua.ArabicText))
+                    {
+                        <div dir="rtl" style="font-size:19px;line-height:1.9;margin:10px 0;color:var(--green-900);">@dua.ArabicText</div>
+                    }
                     @if (!string.IsNullOrEmpty(dua.Transliteration))
                     {
                         <div style="font-size:12.5px;font-style:italic;color:var(--ink-500);margin-bottom:8px;">@dua.Transliteration</div>
                     }
-                    <div style="font-size:13.5px;color:var(--ink-700);">@dua.Translation</div>
+                    @if (!string.IsNullOrEmpty(dua.Translation))
+                    {
+                        <div style="font-size:13.5px;color:var(--ink-700);">@dua.Translation</div>
+                    }
+                    @if (dua.HasPdf)
+                    {
+                        <button class="oi-btn oi-btn-outline oi-btn-sm" style="margin-top:10px;" disabled="@(_openingPdfId == dua.Id)" @onclick="() => OpenPdfAsync(dua)" @onclick:stopPropagation="true">
+                            @(_openingPdfId == dua.Id ? "Açılır..." : "📄 PDF-i aç")
+                        </button>
+                    }
                 }
             </div>
         }
@@ -62,6 +75,7 @@ else
     private string? _search;
     private string? _category;
     private Guid? _expanded;
+    private Guid? _openingPdfId;
 
     protected override async Task OnInitializedAsync() => await LoadAsync();
 
@@ -101,6 +115,29 @@ else
         finally
         {
             _loading = false;
+        }
+    }
+
+    private async Task OpenPdfAsync(DuaDto dua)
+    {
+        _openingPdfId = dua.Id;
+        try
+        {
+            await using var stream = await Api.OpenDuaPdfAsync(dua.Id);
+            using var streamRef = new DotNetStreamReference(stream);
+            await JS.InvokeVoidAsync("openPdfStream", streamRef);
+        }
+        catch (ApiException ex)
+        {
+            _error = ex.Message;
+        }
+        catch
+        {
+            _error = "PDF açıla bilmədi.";
+        }
+        finally
+        {
+            _openingPdfId = null;
         }
     }
 }

@@ -23,14 +23,26 @@
                 <option value="Other">Digər</option>
             </select>
         </div>
+
+        <div style="font-size:11.5px;color:var(--ink-500);margin-bottom:6px;">
+            Mətn yazın, PDF yükləyin, ya da hər ikisini birdən edin.
+        </div>
+
         <div class="oi-field" style="margin-bottom:8px;align-items:flex-start;">
-            <textarea rows="3" dir="rtl" placeholder="Ərəbcə mətn" @bind="_arabicText" @bind:event="oninput" style="font-size:17px;"></textarea>
+            <textarea rows="3" dir="rtl" placeholder="Ərəbcə mətn (opsional)" @bind="_arabicText" @bind:event="oninput" style="font-size:17px;"></textarea>
         </div>
         <div class="oi-field" style="margin-bottom:8px;align-items:flex-start;">
             <textarea rows="2" placeholder="Transliterasiya (opsional)" @bind="_transliteration" @bind:event="oninput"></textarea>
         </div>
-        <div class="oi-field" style="margin-bottom:14px;align-items:flex-start;">
-            <textarea rows="3" placeholder="Tərcümə" @bind="_translation" @bind:event="oninput"></textarea>
+        <div class="oi-field" style="margin-bottom:10px;align-items:flex-start;">
+            <textarea rows="3" placeholder="Tərcümə (opsional)" @bind="_translation" @bind:event="oninput"></textarea>
+        </div>
+
+        <div style="margin-bottom:14px;">
+            <label class="oi-btn oi-btn-outline oi-btn-block" style="cursor:pointer;">
+                @(_pickedPdfName ?? (_editingId is not null && _editingHasPdf ? "PDF-i əvəz et (opsional)" : "PDF faylı əlavə et (opsional)"))
+                <InputFile OnChange="OnPdfSelectedAsync" accept=".pdf" style="display:none;" />
+            </label>
         </div>
 
         <button class="oi-btn oi-btn-primary oi-btn-block" @onclick="SaveAsync" disabled="@_saving">
@@ -60,7 +72,7 @@
         {
             <table class="oi-table">
                 <thead>
-                    <tr><th>Başlıq</th><th>Kateqoriya</th><th></th></tr>
+                    <tr><th>Başlıq</th><th>Kateqoriya</th><th>PDF</th><th></th></tr>
                 </thead>
                 <tbody>
                     @foreach (var dua in _duas)
@@ -68,6 +80,16 @@
                         <tr>
                             <td>@dua.Title</td>
                             <td>@CategoryLabel(dua.Category)</td>
+                            <td>
+                                @if (dua.HasPdf)
+                                {
+                                    <span class="oi-badge">Var</span>
+                                }
+                                else
+                                {
+                                    <span style="color:var(--ink-500);">—</span>
+                                }
+                            </td>
                             <td style="white-space:nowrap;">
                                 <span class="oi-btn oi-btn-sm oi-btn-outline" @onclick="() => StartEdit(dua)">Redaktə et</span>
                                 <span class="oi-btn oi-btn-sm oi-btn-outline" style="color:#A33A3A;border-color:#A33A3A;" @onclick="() => DeleteAsync(dua)">Sil</span>
@@ -76,7 +98,7 @@
                     }
                     @if (_duas.Count == 0)
                     {
-                        <tr><td colspan="3" style="text-align:center;color:var(--ink-500);">Hələ dua yoxdur.</td></tr>
+                        <tr><td colspan="4" style="text-align:center;color:var(--ink-500);">Hələ dua yoxdur.</td></tr>
                     }
                 </tbody>
             </table>
@@ -85,17 +107,22 @@
 </div>
 
 @code {
+    private const long MaxPdfSizeBytes = 50 * 1024 * 1024;
+
     private List<DuaDto> _duas = new();
     private bool _loading = true;
     private string? _loadError;
     private string? _actionError;
 
     private Guid? _editingId;
+    private bool _editingHasPdf;
     private string _title = string.Empty;
     private string _category = "Daily";
     private string _arabicText = string.Empty;
     private string _transliteration = string.Empty;
     private string _translation = string.Empty;
+    private MemoryStream? _pickedPdf;
+    private string? _pickedPdfName;
     private bool _saving;
     private string? _formError;
 
@@ -132,25 +159,52 @@
         _ => "Digər",
     };
 
+    private async Task OnPdfSelectedAsync(InputFileChangeEventArgs e)
+    {
+        try
+        {
+            var file = e.File;
+            var buffer = new MemoryStream();
+            await using (var stream = file.OpenReadStream(MaxPdfSizeBytes))
+            {
+                await stream.CopyToAsync(buffer);
+            }
+            buffer.Position = 0;
+
+            _pickedPdf = buffer;
+            _pickedPdfName = file.Name;
+        }
+        catch
+        {
+            _formError = "Fayl seçilə bilmədi (50MB-dan böyük ola bilər).";
+        }
+    }
+
     private void StartEdit(DuaDto dua)
     {
         _editingId = dua.Id;
+        _editingHasPdf = dua.HasPdf;
         _title = dua.Title;
         _category = dua.Category.ToString();
-        _arabicText = dua.ArabicText;
+        _arabicText = dua.ArabicText ?? string.Empty;
         _transliteration = dua.Transliteration ?? string.Empty;
-        _translation = dua.Translation;
+        _translation = dua.Translation ?? string.Empty;
+        _pickedPdf = null;
+        _pickedPdfName = null;
         _formError = null;
     }
 
     private void CancelEdit()
     {
         _editingId = null;
+        _editingHasPdf = false;
         _title = string.Empty;
         _category = "Daily";
         _arabicText = string.Empty;
         _transliteration = string.Empty;
         _translation = string.Empty;
+        _pickedPdf = null;
+        _pickedPdfName = null;
         _formError = null;
     }
 
@@ -158,30 +212,40 @@
     {
         _formError = null;
 
-        if (string.IsNullOrWhiteSpace(_title) || string.IsNullOrWhiteSpace(_arabicText) || string.IsNullOrWhiteSpace(_translation))
+        if (string.IsNullOrWhiteSpace(_title))
         {
-            _formError = "Başlıq, ərəbcə mətn və tərcümə tələb olunur.";
+            _formError = "Duanın başlığı tələb olunur.";
+            return;
+        }
+
+        var hasText = !string.IsNullOrWhiteSpace(_arabicText) || !string.IsNullOrWhiteSpace(_translation);
+        var willHavePdf = _pickedPdf is not null || (_editingId is not null && _editingHasPdf);
+        if (!hasText && !willHavePdf)
+        {
+            _formError = "Ya mətn yazın, ya da PDF faylı əlavə edin.";
             return;
         }
 
         var category = Enum.TryParse<DuaCategoryDto>(_category, out var parsed) ? parsed : DuaCategoryDto.Other;
         var request = new UpsertDuaRequest(
             _title.Trim(),
-            _arabicText.Trim(),
-            _translation.Trim(),
+            string.IsNullOrWhiteSpace(_arabicText) ? null : _arabicText.Trim(),
+            string.IsNullOrWhiteSpace(_translation) ? null : _translation.Trim(),
             string.IsNullOrWhiteSpace(_transliteration) ? null : _transliteration.Trim(),
             category);
 
         _saving = true;
         try
         {
-            if (_editingId is null)
+            var dua = _editingId is null
+                ? await Api.CreateDuaAsync(request)
+                : await Api.UpdateDuaAsync(_editingId.Value, request);
+
+            if (_pickedPdf is not null)
             {
-                await Api.CreateDuaAsync(request);
-            }
-            else
-            {
-                await Api.UpdateDuaAsync(_editingId.Value, request);
+                _pickedPdf.Position = 0;
+                await Api.UploadDuaPdfAsync(dua.Id, _pickedPdf, _pickedPdfName!);
+                await _pickedPdf.DisposeAsync();
             }
 
             CancelEdit();

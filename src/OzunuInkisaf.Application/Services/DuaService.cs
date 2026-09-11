@@ -11,10 +11,12 @@ namespace OzunuInkisaf.Application.Services;
 public class DuaService : IDuaService
 {
     private readonly IApplicationDbContext _db;
+    private readonly IFileStorageService _fileStorage;
 
-    public DuaService(IApplicationDbContext db)
+    public DuaService(IApplicationDbContext db, IFileStorageService fileStorage)
     {
         _db = db;
+        _fileStorage = fileStorage;
     }
 
     public async Task<IReadOnlyList<DuaDto>> GetAllAsync(string? category, string? search, CancellationToken cancellationToken = default)
@@ -39,14 +41,14 @@ public class DuaService : IDuaService
 
     public async Task<DuaDto> CreateAsync(UpsertDuaRequest request, Guid createdByUserId, CancellationToken cancellationToken = default)
     {
-        Validate(request);
+        ValidateTitle(request.Title);
 
         var dua = new Dua
         {
             Title = request.Title.Trim(),
-            ArabicText = request.ArabicText.Trim(),
-            Translation = request.Translation.Trim(),
-            Transliteration = request.Transliteration,
+            ArabicText = string.IsNullOrWhiteSpace(request.ArabicText) ? null : request.ArabicText.Trim(),
+            Translation = string.IsNullOrWhiteSpace(request.Translation) ? null : request.Translation.Trim(),
+            Transliteration = string.IsNullOrWhiteSpace(request.Transliteration) ? null : request.Transliteration.Trim(),
             Category = (DuaCategory)request.Category,
             CreatedByUserId = createdByUserId,
             IsActive = true,
@@ -60,15 +62,15 @@ public class DuaService : IDuaService
 
     public async Task<DuaDto> UpdateAsync(Guid duaId, UpsertDuaRequest request, CancellationToken cancellationToken = default)
     {
-        Validate(request);
+        ValidateTitle(request.Title);
 
         var dua = await _db.Duas.SingleOrDefaultAsync(d => d.Id == duaId, cancellationToken)
             ?? throw new NotFoundException(nameof(Dua), duaId);
 
         dua.Title = request.Title.Trim();
-        dua.ArabicText = request.ArabicText.Trim();
-        dua.Translation = request.Translation.Trim();
-        dua.Transliteration = request.Transliteration;
+        dua.ArabicText = string.IsNullOrWhiteSpace(request.ArabicText) ? null : request.ArabicText.Trim();
+        dua.Translation = string.IsNullOrWhiteSpace(request.Translation) ? null : request.Translation.Trim();
+        dua.Transliteration = string.IsNullOrWhiteSpace(request.Transliteration) ? null : request.Transliteration.Trim();
         dua.Category = (DuaCategory)request.Category;
 
         await _db.SaveChangesAsync(cancellationToken);
@@ -85,19 +87,43 @@ public class DuaService : IDuaService
         await _db.SaveChangesAsync(cancellationToken);
     }
 
-    private static void Validate(UpsertDuaRequest request)
+    public async Task<DuaDto> UploadPdfAsync(Guid duaId, Stream content, string originalFileName, CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(request.Title))
+        var dua = await _db.Duas.SingleOrDefaultAsync(d => d.Id == duaId, cancellationToken)
+            ?? throw new NotFoundException(nameof(Dua), duaId);
+
+        var (relativePath, sizeBytes) = await _fileStorage.SavePdfAsync(content, originalFileName, cancellationToken);
+
+        dua.PdfPath = relativePath;
+        dua.PdfFileSizeBytes = sizeBytes;
+
+        await _db.SaveChangesAsync(cancellationToken);
+
+        return ToDto(dua);
+    }
+
+    public async Task<(Stream Content, string FileName)> OpenPdfAsync(Guid duaId, CancellationToken cancellationToken = default)
+    {
+        var dua = await _db.Duas.SingleOrDefaultAsync(d => d.Id == duaId, cancellationToken)
+            ?? throw new NotFoundException(nameof(Dua), duaId);
+
+        if (string.IsNullOrEmpty(dua.PdfPath))
         {
-            throw new ValidationAppException("Duanın adı tələb olunur.");
+            throw new NotFoundException(nameof(Dua), duaId);
         }
 
-        if (string.IsNullOrWhiteSpace(request.Translation))
+        var stream = await _fileStorage.OpenReadAsync(dua.PdfPath, cancellationToken);
+        return (stream, $"{dua.Title}.pdf");
+    }
+
+    private static void ValidateTitle(string title)
+    {
+        if (string.IsNullOrWhiteSpace(title))
         {
-            throw new ValidationAppException("Tərcümə mətni tələb olunur.");
+            throw new ValidationAppException("Duanın adı tələb olunur.");
         }
     }
 
     private static DuaDto ToDto(Dua d) => new(
-        d.Id, d.Title, d.ArabicText, d.Translation, d.Transliteration, (DuaCategoryDto)d.Category, d.IsActive);
+        d.Id, d.Title, d.ArabicText, d.Translation, d.Transliteration, (DuaCategoryDto)d.Category, d.IsActive, !string.IsNullOrEmpty(d.PdfPath));
 }

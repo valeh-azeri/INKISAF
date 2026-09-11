@@ -5,15 +5,16 @@ namespace OzunuInkisaf.Contracts.Duas;
 public record DuaDto(
     Guid Id,
     string Title,
-    string ArabicText,
-    string Translation,
+    string? ArabicText,
+    string? Translation,
     string? Transliteration,
     DuaCategoryDto Category,
-    bool IsActive);
+    bool IsActive,
+    bool HasPdf);
 
 public record UpsertDuaRequest(
     string Title,
-    string ArabicText,
-    string Translation,
+    string? ArabicText,
+    string? Translation,
     string? Transliteration,
     DuaCategoryDto Category);

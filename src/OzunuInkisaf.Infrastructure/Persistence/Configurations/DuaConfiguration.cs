@@ -13,9 +13,10 @@ public class DuaConfiguration : IEntityTypeConfiguration<Dua>
         builder.HasKey(d => d.Id);
 
         builder.Property(d => d.Title).IsRequired().HasMaxLength(200);
-        builder.Property(d => d.ArabicText).IsRequired().HasMaxLength(4000);
-        builder.Property(d => d.Translation).IsRequired().HasMaxLength(4000);
+        builder.Property(d => d.ArabicText).HasMaxLength(4000);
+        builder.Property(d => d.Translation).HasMaxLength(4000);
         builder.Property(d => d.Transliteration).HasMaxLength(4000);
+        builder.Property(d => d.PdfPath).HasMaxLength(500);
 
         builder.HasOne(d => d.CreatedBy)
             .WithMany()

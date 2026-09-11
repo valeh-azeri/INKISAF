@@ -11,4 +11,9 @@ public interface IDuaService
     Task<DuaDto> UpdateAsync(Guid duaId, UpsertDuaRequest request, CancellationToken cancellationToken = default);
 
     Task DeleteAsync(Guid duaId, CancellationToken cancellationToken = default);
+
+    /// <summary>Bu duaya PDF fayl əlavə edir (yenisi ilə əvəz edir, mətn sahələrinə toxunmur).</summary>
+    Task<DuaDto> UploadPdfAsync(Guid duaId, Stream content, string originalFileName, CancellationToken cancellationToken = default);
+
+    Task<(Stream Content, string FileName)> OpenPdfAsync(Guid duaId, CancellationToken cancellationToken = default);
 }

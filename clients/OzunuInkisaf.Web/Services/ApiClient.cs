@@ -136,6 +136,23 @@ public class ApiClient
     public Task DeleteDuaAsync(Guid duaId) =>
         SendNoContentAsync(() => _http.DeleteAsync($"api/duas/{duaId}"));
 
+    public async Task<DuaDto> UploadDuaPdfAsync(Guid duaId, Stream pdfContent, string fileName)
+    {
+        using var form = new MultipartFormDataContent();
+        using var fileContent = new StreamContent(pdfContent);
+        fileContent.Headers.ContentType = new MediaTypeHeaderValue("application/pdf");
+        form.Add(fileContent, "file", fileName);
+        return await SendAsync<DuaDto>(() => _http.PostAsync($"api/duas/{duaId}/pdf", form));
+    }
+
+    public async Task<Stream> OpenDuaPdfAsync(Guid duaId)
+    {
+        ApplyAuthHeader();
+        var response = await _http.GetAsync($"api/duas/{duaId}/pdf");
+        await EnsureSuccessAsync(response);
+        return await response.Content.ReadAsStreamAsync();
+    }
+
     // ---- Khatim ----------------------------------------------------------
 
     public Task<KhatimCycleStatusDto2> GetKhatimStatusAsync() =>
