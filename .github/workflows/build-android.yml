@@ -11,7 +11,7 @@ on:
 
 jobs:
   build:
-    runs-on: windows-latest
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
@@ -20,24 +20,23 @@ jobs:
           dotnet-version: "8.0.404"
 
       - name: Install MAUI workloads
-        run: dotnet workload install android ios maccatalyst maui-windows --skip-manifest-update
+        run: dotnet workload install android ios maccatalyst --skip-manifest-update
 
-      - name: Restore
-        run: dotnet restore clients/OzunuInkisaf.Maui/OzunuInkisaf.Maui.csproj
+      - name: Restore (android only)
+        run: dotnet restore clients/OzunuInkisaf.Maui/OzunuInkisaf.Maui.csproj -f net8.0-android
 
       - name: Build APK
         run: dotnet build clients/OzunuInkisaf.Maui/OzunuInkisaf.Maui.csproj -f net8.0-android -c Release
 
       - name: Find APK
         id: find_apk
-        shell: pwsh
         run: |
-          $apk = Get-ChildItem -Path "clients/OzunuInkisaf.Maui/bin/Release/net8.0-android" -Filter "*-Signed.apk" -Recurse | Select-Object -First 1
-          if (-not $apk) {
-            $apk = Get-ChildItem -Path "clients/OzunuInkisaf.Maui/bin/Release/net8.0-android" -Filter "*.apk" -Recurse | Select-Object -First 1
-          }
-          Copy-Item $apk.FullName "OzunuInkisaf.apk"
-          echo "path=OzunuInkisaf.apk" >> $env:GITHUB_OUTPUT
+          apk=$(find clients/OzunuInkisaf.Maui/bin/Release/net8.0-android -iname "*-Signed.apk" | head -1)
+          if [ -z "$apk" ]; then
+            apk=$(find clients/OzunuInkisaf.Maui/bin/Release/net8.0-android -iname "*.apk" | head -1)
+          fi
+          cp "$apk" OzunuInkisaf.apk
+          echo "path=OzunuInkisaf.apk" >> "$GITHUB_OUTPUT"
 
       - uses: actions/upload-artifact@v4
         with:
