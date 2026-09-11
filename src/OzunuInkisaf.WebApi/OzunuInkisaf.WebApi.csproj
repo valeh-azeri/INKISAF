@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>OzunuInkisaf.WebApi</RootNamespace>
+    <UserSecretsId>ozunu-inkisaf-webapi</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.10" />
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\OzunuInkisaf.Application\OzunuInkisaf.Application.csproj" />
+    <ProjectReference Include="..\OzunuInkisaf.Infrastructure\OzunuInkisaf.Infrastructure.csproj" />
+    <ProjectReference Include="..\OzunuInkisaf.Contracts\OzunuInkisaf.Contracts.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,237 @@
+@page "/admin/books"
+@layout AdminLayout
+@inject ApiClient Api
+
+<h2 class="heading" style="margin-bottom:18px;">Kitablar</h2>
+
+<div style="display:grid;grid-template-columns:340px 1fr;gap:20px;align-items:start;">
+    <div class="oi-card">
+        <div class="oi-section-title">Yeni kitab yüklə</div>
+
+        @if (!string.IsNullOrEmpty(_uploadError))
+        {
+            <div class="oi-alert oi-alert-error">@_uploadError</div>
+        }
+        @if (_uploadSuccess)
+        {
+            <div class="oi-alert oi-alert-success">Kitab uğurla yerləşdirildi.</div>
+        }
+
+        <div style="margin-bottom:10px;">
+            <button class="oi-btn oi-btn-outline oi-btn-block" @onclick="PickFileAsync">
+                @(_pickedFileName ?? "PDF faylını seçin")
+            </button>
+        </div>
+
+        <div class="oi-field" style="margin-bottom:8px;">
+            <input placeholder="Kitabın adı" @bind="_title" @bind:event="oninput" />
+        </div>
+        <div class="oi-field" style="margin-bottom:8px;">
+            <input placeholder="Müəllif" @bind="_author" @bind:event="oninput" />
+        </div>
+        <div class="oi-field" style="margin-bottom:8px;">
+            <select @bind="_category">
+                <option value="General">Ümumi</option>
+                <option value="Quran">Quran Kərim</option>
+            </select>
+        </div>
+        <div class="oi-field" style="margin-bottom:8px;">
+            <input placeholder="Təyin olunan ay (məs. Sentyabr 2026)" @bind="_assignedMonthLabel" @bind:event="oninput" />
+        </div>
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;margin-bottom:8px;">
+            <input type="checkbox" @bind="_isCurrentMonthPick" /> Bu ayın seçimi kimi qeyd et
+        </label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;margin-bottom:14px;">
+            <input type="checkbox" @bind="_notifyAllUsers" /> Bütün istifadəçilərə göndər
+        </label>
+
+        <button class="oi-btn oi-btn-primary oi-btn-block" @onclick="UploadAsync" disabled="@_uploading">
+            @(_uploading ? "Yüklənir..." : "Kitabı yerləşdir")
+        </button>
+    </div>
+
+    <div class="oi-card">
+        <div class="oi-section-title">Yerləşdirilmiş kitablar</div>
+        @if (_loading)
+        {
+            <div class="oi-spinner-center">Yüklənir...</div>
+        }
+        else if (_loadError is not null)
+        {
+            <div class="oi-alert oi-alert-error">@_loadError</div>
+        }
+        else
+        {
+            <table class="oi-table">
+                <thead>
+                    <tr><th>Kitab</th><th>Kateqoriya</th><th>Yükləmə tarixi</th><th></th></tr>
+                </thead>
+                <tbody>
+                    @foreach (var book in _books)
+                    {
+                        <tr>
+                            <td>@book.Title</td>
+                            <td>@(book.Category == BookCategoryDto.Quran ? "Quran Kərim" : "Ümumi")</td>
+                            <td>@book.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy")</td>
+                            <td>
+                                @if (book.Status == BookStatusDto.Active)
+                                {
+                                    <span class="oi-btn oi-btn-sm oi-btn-outline" @onclick="() => ArchiveAsync(book.Id)">Arxivləşdir</span>
+                                }
+                                else
+                                {
+                                    <span class="oi-badge">Arxivdə</span>
+                                }
+                            </td>
+                        </tr>
+                    }
+                    @if (_books.Count == 0)
+                    {
+                        <tr><td colspan="4" style="text-align:center;color:var(--ink-500);">Hələ kitab yoxdur.</td></tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </div>
+</div>
+
+@code {
+    private List<BookSummaryDto> _books = new();
+    private bool _loading = true;
+    private string? _loadError;
+
+    private FileResult? _pickedFile;
+    private string? _pickedFileName;
+    private string _title = string.Empty;
+    private string _author = string.Empty;
+    private string _category = "General";
+    private string _assignedMonthLabel = string.Empty;
+    private bool _isCurrentMonthPick;
+    private bool _notifyAllUsers = true;
+    private bool _uploading;
+    private string? _uploadError;
+    private bool _uploadSuccess;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        try
+        {
+            var result = await Api.GetBooksAsync();
+            _books = result.OrderByDescending(b => b.CreatedAt).ToList();
+        }
+        catch (ApiException ex)
+        {
+            _loadError = ex.Message;
+        }
+        catch
+        {
+            _loadError = "Kitablar yüklənə bilmədi.";
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task PickFileAsync()
+    {
+        try
+        {
+            var result = await FilePicker.Default.PickAsync(new PickOptions
+            {
+                PickerTitle = "PDF faylını seçin",
+                FileTypes = FilePickerFileType.Pdf,
+            });
+
+            if (result is not null)
+            {
+                _pickedFile = result;
+                _pickedFileName = result.FileName;
+                if (string.IsNullOrWhiteSpace(_title))
+                {
+                    _title = Path.GetFileNameWithoutExtension(result.FileName);
+                }
+            }
+        }
+        catch
+        {
+            _uploadError = "Fayl seçilə bilmədi.";
+        }
+    }
+
+    private async Task UploadAsync()
+    {
+        _uploadError = null;
+        _uploadSuccess = false;
+
+        if (_pickedFile is null)
+        {
+            _uploadError = "Əvvəlcə PDF faylı seçin.";
+            return;
+        }
+        if (string.IsNullOrWhiteSpace(_title))
+        {
+            _uploadError = "Kitabın adını daxil edin.";
+            return;
+        }
+
+        _uploading = true;
+        try
+        {
+            await using var stream = await _pickedFile.OpenReadAsync();
+            var category = _category == "Quran" ? BookCategoryDto.Quran : BookCategoryDto.General;
+            var meta = new UploadBookRequest(
+                _title.Trim(),
+                string.IsNullOrWhiteSpace(_author) ? null : _author.Trim(),
+                category,
+                string.IsNullOrWhiteSpace(_assignedMonthLabel) ? null : _assignedMonthLabel.Trim(),
+                _isCurrentMonthPick,
+                _notifyAllUsers,
+                null);
+
+            await Api.UploadBookAsync(stream, _pickedFile.FileName, meta);
+
+            _uploadSuccess = true;
+            _pickedFile = null;
+            _pickedFileName = null;
+            _title = string.Empty;
+            _author = string.Empty;
+            _assignedMonthLabel = string.Empty;
+            _isCurrentMonthPick = false;
+
+            await LoadAsync();
+        }
+        catch (ApiException ex)
+        {
+            _uploadError = ex.Message;
+        }
+        catch
+        {
+            _uploadError = "Kitab yüklənə bilmədi.";
+        }
+        finally
+        {
+            _uploading = false;
+        }
+    }
+
+    private async Task ArchiveAsync(Guid bookId)
+    {
+        try
+        {
+            await Api.ArchiveBookAsync(bookId);
+            await LoadAsync();
+        }
+        catch (ApiException ex)
+        {
+            _loadError = ex.Message;
+        }
+        catch
+        {
+            _loadError = "Arxivləşdirmə uğursuz oldu.";
+        }
+    }
+}

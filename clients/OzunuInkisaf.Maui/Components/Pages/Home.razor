@@ -1,0 +1,100 @@
+@page "/home"
+@inject ApiClient Api
+@inject AuthState Auth
+@inject NavigationManager Nav
+
+<div class="oi-topbar" style="margin:-16px -16px 16px -16px;">
+    <div class="subtitle">Salam, xoş gördük</div>
+    <div class="title">@Auth.FullName</div>
+</div>
+
+@if (_loading)
+{
+    <div class="oi-spinner-center">Yüklənir...</div>
+}
+else
+{
+    @if (_continueReading is not null)
+    {
+        <div class="oi-card" style="margin-bottom:14px;cursor:pointer;" @onclick='() => Nav.NavigateTo($"/reader/{_continueReading.Id}")'>
+            <div class="oi-badge">Davam et</div>
+            <div class="heading" style="font-size:17px;margin-top:8px;">@_continueReading.Title</div>
+            @{
+                var pct = _continueReading.TotalPages > 0 && _continueReading.CurrentUserPage.HasValue
+                    ? (int)Math.Round(100.0 * _continueReading.CurrentUserPage.Value / _continueReading.TotalPages)
+                    : 0;
+            }
+            <div style="font-size:12.5px;color:var(--ink-500);margin-top:4px;">
+                Səhifə @(_continueReading.CurrentUserPage ?? 0) / @_continueReading.TotalPages · @(pct)%
+            </div>
+            <div style="height:6px;background:var(--border);border-radius:100px;margin-top:8px;overflow:hidden;">
+                <div style="height:100%;width:@(pct)%;background:var(--green-600);"></div>
+            </div>
+        </div>
+    }
+
+    <div class="oi-section-title">Sürətli keçid</div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px;">
+        <QuickLink Icon="📚" Label="Kitabxana" Href="/library" />
+        <QuickLink Icon="📖" Label="Quran Kərim" Href="/library" />
+        <QuickLink Icon="☾" Label="Xətim" Href="/khatim" />
+        <QuickLink Icon="✓" Label="Çətələ" Href="/tally" />
+        <QuickLink Icon="🤲" Label="Dualar" Href="/duas" />
+        <QuickLink Icon="👤" Label="Profil" Href="/profile" />
+    </div>
+
+    @if (_activeTally is not null)
+    {
+        <div class="oi-card" style="margin-bottom:14px;cursor:pointer;" @onclick='() => Nav.NavigateTo("/tally")'>
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+                <div class="oi-section-title" style="margin:0;">Bu həftənin çətələsi</div>
+                <span style="color:var(--green-700);font-weight:700;font-size:13px;">Bax →</span>
+            </div>
+            <div style="font-size:12px;color:var(--ink-500);margin-top:4px;">
+                Toplanma tarixi: @_activeTally.DueDate.ToString("dd MMMM")
+            </div>
+        </div>
+    }
+
+    @if (_monthBook is not null)
+    {
+        <div class="oi-card">
+            <div class="oi-badge oi-badge-gold">Bu ayın kitabı</div>
+            <div class="heading" style="font-size:16px;margin-top:8px;">@_monthBook.Title</div>
+            @if (!string.IsNullOrEmpty(_monthBook.Author))
+            {
+                <div style="font-size:12.5px;color:var(--ink-500);">@_monthBook.Author</div>
+            }
+        </div>
+    }
+}
+
+@code {
+    private bool _loading = true;
+    private BookSummaryDto? _continueReading;
+    private BookSummaryDto? _monthBook;
+    private TallyTemplateDto? _activeTally;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var books = await Api.GetBooksAsync();
+            _continueReading = books
+                .Where(b => b.CurrentUserPage.HasValue && b.CurrentUserCompleted != true)
+                .OrderByDescending(b => b.CreatedAt)
+                .FirstOrDefault();
+            _monthBook = books.FirstOrDefault(b => b.IsCurrentMonthPick);
+
+            _activeTally = await Api.GetActiveTallyAsync();
+        }
+        catch
+        {
+            // Ana səhifədə xəta göstərmirik — hər kart özü boş qala bilər.
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+}

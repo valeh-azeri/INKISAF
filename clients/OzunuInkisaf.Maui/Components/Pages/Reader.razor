@@ -1,0 +1,162 @@
+@page "/reader/{BookId:guid}"
+@inject ApiClient Api
+@inject NavigationManager Nav
+
+<div class="oi-topbar" style="margin:-16px -16px 16px -16px;display:flex;align-items:center;gap:10px;">
+    <span style="cursor:pointer;" @onclick='() => Nav.NavigateTo("/library")'>←</span>
+    <div>
+        <div class="title" style="font-size:16px;">@(_book?.Title ?? "Yüklənir...")</div>
+        @if (_book?.Author is not null)
+        {
+            <div class="subtitle">@_book.Author</div>
+        }
+    </div>
+</div>
+
+@if (_loading)
+{
+    <div class="oi-spinner-center">Yüklənir...</div>
+}
+else if (_error is not null)
+{
+    <div class="oi-alert oi-alert-error">@_error</div>
+}
+else if (_book is not null)
+{
+    <div class="oi-card" style="text-align:center;margin-bottom:14px;">
+        <div style="font-size:44px;">📖</div>
+        <div style="font-size:12.5px;color:var(--ink-500);margin:8px 0 14px;">
+            Mövqeyiniz avtomatik saxlanılır
+        </div>
+        <button class="oi-btn oi-btn-primary oi-btn-block" @onclick="OpenPdfAsync" disabled="@_opening">
+            @(_opening ? "Açılır..." : "PDF-i aç")
+        </button>
+    </div>
+
+    <div class="oi-card">
+        <div class="oi-section-title">Oxuma mövqeyi</div>
+        <div style="display:flex;align-items:center;gap:10px;">
+            <button class="oi-btn oi-btn-outline oi-btn-sm" @onclick="() => ChangePage(-1)">−</button>
+            <div class="oi-field" style="flex:1;">
+                <input type="number" min="1" max="@_book.TotalPages" @bind="_currentPage" @bind:event="oninput" />
+            </div>
+            <button class="oi-btn oi-btn-outline oi-btn-sm" @onclick="() => ChangePage(1)">+</button>
+        </div>
+        <div style="font-size:12px;color:var(--ink-500);margin-top:8px;">
+            @_currentPage / @_book.TotalPages
+        </div>
+        <div style="height:6px;background:var(--border);border-radius:100px;margin:10px 0 14px;overflow:hidden;">
+            <div style="height:100%;width:@Percent%;background:var(--green-600);"></div>
+        </div>
+        <button class="oi-btn oi-btn-gold oi-btn-block" @onclick="SaveProgressAsync" disabled="@_saving">
+            @(_saving ? "Saxlanılır..." : "Bu səhifədə saxla")
+        </button>
+        @if (_saved)
+        {
+            <div class="oi-alert oi-alert-success" style="margin-top:10px;margin-bottom:0;">Mövqe yadda saxlanıldı.</div>
+        }
+    </div>
+}
+
+@code {
+    [Parameter] public Guid BookId { get; set; }
+
+    private BookSummaryDto? _book;
+    private bool _loading = true;
+    private bool _opening;
+    private bool _saving;
+    private bool _saved;
+    private string? _error;
+    private int _currentPage = 1;
+
+    private int Percent => _book is { TotalPages: > 0 } ? Math.Clamp((int)Math.Round(100.0 * _currentPage / _book.TotalPages), 0, 100) : 0;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var books = await Api.GetBooksAsync();
+            _book = books.FirstOrDefault(b => b.Id == BookId);
+            if (_book is null)
+            {
+                _error = "Kitab tapılmadı.";
+            }
+            else
+            {
+                _currentPage = Math.Max(1, _book.CurrentUserPage ?? 1);
+            }
+        }
+        catch (ApiException ex)
+        {
+            _error = ex.Message;
+        }
+        catch
+        {
+            _error = "Kitab yüklənə bilmədi.";
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private void ChangePage(int delta)
+    {
+        if (_book is null) return;
+        _currentPage = Math.Clamp(_currentPage + delta, 1, Math.Max(1, _book.TotalPages));
+        _saved = false;
+    }
+
+    private async Task OpenPdfAsync()
+    {
+        if (_book is null) return;
+        _opening = true;
+        try
+        {
+            await using var stream = await Api.OpenPdfAsync(_book.Id);
+            var localPath = Path.Combine(FileSystem.CacheDirectory, $"{_book.Id}.pdf");
+            await using (var fileStream = File.Create(localPath))
+            {
+                await stream.CopyToAsync(fileStream);
+            }
+
+            await Launcher.Default.OpenAsync(new OpenFileRequest("PDF", new ReadOnlyFile(localPath)));
+        }
+        catch (ApiException ex)
+        {
+            _error = ex.Message;
+        }
+        catch
+        {
+            _error = "PDF açıla bilmədi. Cihazınızda PDF oxucu tətbiqinin qoşulu olduğundan əmin olun.";
+        }
+        finally
+        {
+            _opening = false;
+        }
+    }
+
+    private async Task SaveProgressAsync()
+    {
+        if (_book is null) return;
+        _saving = true;
+        _saved = false;
+        try
+        {
+            await Api.SaveProgressAsync(_book.Id, _currentPage);
+            _saved = true;
+        }
+        catch (ApiException ex)
+        {
+            _error = ex.Message;
+        }
+        catch
+        {
+            _error = "Mövqe saxlanıla bilmədi.";
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+}

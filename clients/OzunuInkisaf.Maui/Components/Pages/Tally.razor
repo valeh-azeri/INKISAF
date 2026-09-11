@@ -1,0 +1,111 @@
+@page "/tally"
+@inject ApiClient Api
+
+<div class="oi-topbar" style="margin:-16px -16px 16px -16px;">
+    <div class="title">Bu həftənin çətələsi</div>
+</div>
+
+@if (_loading)
+{
+    <div class="oi-spinner-center">Yüklənir...</div>
+}
+else if (_error is not null)
+{
+    <div class="oi-alert oi-alert-error">@_error</div>
+}
+else if (_tally is null)
+{
+    <div class="oi-card" style="text-align:center;color:var(--ink-500);">Hazırda yayımlanmış çətələ yoxdur.</div>
+}
+else
+{
+    <div class="oi-card" style="margin-bottom:14px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+            <div class="heading" style="font-size:16px;">@_tally.WeekStartDate.ToString("d MMM") – @_tally.WeekEndDate.ToString("d MMM")</div>
+            <span class="oi-badge oi-badge-gold">@_tally.TotalPointsThisWeek bal</span>
+        </div>
+        <div style="font-size:11.5px;color:var(--ink-500);margin-top:4px;">
+            Toplanma tarixi: @_tally.DueDate.ToString("dd MMMM")
+        </div>
+    </div>
+
+    @if (!string.IsNullOrEmpty(_actionError))
+    {
+        <div class="oi-alert oi-alert-error">@_actionError</div>
+    }
+
+    @foreach (var itemWithEntries in _tally.Items)
+    {
+        var done = itemWithEntries.Entries.Count(e => e.IsCompleted);
+        var total = itemWithEntries.Entries.Count;
+        <div class="oi-card" style="margin-bottom:10px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+                <div class="heading" style="font-size:14.5px;">@itemWithEntries.Item.Title</div>
+                <span class="oi-badge">@done/@total</span>
+            </div>
+            <div style="font-size:11.5px;color:var(--ink-500);margin:4px 0 10px;">
+                @(itemWithEntries.Item.Frequency == TallyItemFrequencyDto.Daily ? "Gündəlik" : "Həftənin müəyyən günləri") · @itemWithEntries.Item.PointsPerCompletion bal
+            </div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                @foreach (var entry in itemWithEntries.Entries.OrderBy(e => e.Date))
+                {
+                    <div class="oi-btn oi-btn-sm @(entry.IsCompleted ? "oi-btn-primary" : "oi-btn-outline")"
+                         style="min-width:44px;"
+                         @onclick="() => ToggleAsync(itemWithEntries.Item.Id, entry)">
+                        @DayLabel(entry.Date)
+                    </div>
+                }
+            </div>
+        </div>
+    }
+}
+
+@code {
+    private TallyTemplateDto? _tally;
+    private bool _loading = true;
+    private string? _error;
+    private string? _actionError;
+    private static readonly string[] DayNames = { "B.e", "Ç.a", "Ç", "C.a", "C", "Ş", "Ba" };
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        try
+        {
+            _tally = await Api.GetActiveTallyAsync();
+        }
+        catch (ApiException ex)
+        {
+            _error = ex.Message;
+        }
+        catch
+        {
+            _error = "Çətələ yüklənə bilmədi.";
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private static string DayLabel(DateOnly date) => DayNames[(int)date.DayOfWeek == 0 ? 6 : (int)date.DayOfWeek - 1];
+
+    private async Task ToggleAsync(Guid itemId, TallyDayEntryDto entry)
+    {
+        _actionError = null;
+        try
+        {
+            _tally = await Api.SetTallyEntryAsync(itemId, entry.Date, !entry.IsCompleted);
+        }
+        catch (ApiException ex)
+        {
+            _actionError = ex.Message;
+        }
+        catch
+        {
+            _actionError = "Qeyd yadda saxlanıla bilmədi.";
+        }
+    }
+}

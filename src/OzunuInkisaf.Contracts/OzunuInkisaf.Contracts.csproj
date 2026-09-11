@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>OzunuInkisaf.Contracts</RootNamespace>
+  </PropertyGroup>
+
+  <!--
+    Deliberately dependency-free: this project is referenced by both the
+    WebApi (to shape its responses) and the MAUI client (to deserialize
+    them), so it must never pull in EF Core, ASP.NET Core or anything else
+    that would drag server-only or heavy packages into the mobile app.
+  -->
+
+</Project>

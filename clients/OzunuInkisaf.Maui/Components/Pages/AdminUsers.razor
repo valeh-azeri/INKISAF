@@ -1,0 +1,324 @@
+@page "/admin/users"
+@layout AdminLayout
+@inject ApiClient Api
+
+<h2 class="heading" style="margin-bottom:18px;">İstifadəçilər</h2>
+
+<div style="display:grid;grid-template-columns:340px 1fr;gap:20px;align-items:start;">
+    <div style="display:flex;flex-direction:column;gap:16px;">
+        <div class="oi-card">
+            <div class="oi-section-title">Tək istifadəçi yarat</div>
+            @if (!string.IsNullOrEmpty(_singleError))
+            {
+                <div class="oi-alert oi-alert-error">@_singleError</div>
+            }
+            <div class="oi-field" style="margin-bottom:8px;">
+                <input placeholder="Ad Soyad" @bind="_singleFullName" @bind:event="oninput" />
+            </div>
+            <div class="oi-field" style="margin-bottom:8px;">
+                <input placeholder="Email (opsional)" @bind="_singleEmail" @bind:event="oninput" />
+            </div>
+            <div style="font-size:11.5px;color:var(--ink-500);margin-bottom:10px;">
+                İstifadəçi adı və şifrə avtomatik generasiya olunacaq.
+            </div>
+            <button class="oi-btn oi-btn-primary oi-btn-block" @onclick="CreateSingleAsync" disabled="@_singleBusy">
+                @(_singleBusy ? "Yaradılır..." : "Hesab yarat")
+            </button>
+
+            @if (_lastCreated is not null)
+            {
+                <div class="oi-alert oi-alert-success" style="margin-top:10px;">
+                    <div><strong>@_lastCreated.Username</strong> / <strong>@_lastCreated.GeneratedPassword</strong></div>
+                    <div style="font-size:11px;margin-top:2px;">Bu məlumatı istifadəçiyə göndərin.</div>
+                </div>
+            }
+        </div>
+
+        <div class="oi-card">
+            <div class="oi-section-title">Toplu istifadəçi yarat</div>
+            @if (!string.IsNullOrEmpty(_bulkError))
+            {
+                <div class="oi-alert oi-alert-error">@_bulkError</div>
+            }
+            <div style="font-size:11.5px;color:var(--ink-500);margin-bottom:6px;">
+                Hər sətirdə: Ad Soyad, Email (email opsional)
+            </div>
+            <div class="oi-field" style="margin-bottom:10px;">
+                <textarea rows="4" placeholder="Elvin Səfərov, elvin@mail.com&#10;Aygün Məmmədova" @bind="_bulkListText" @bind:event="oninput"></textarea>
+            </div>
+            <button class="oi-btn oi-btn-outline oi-btn-block" style="margin-bottom:10px;" @onclick="BulkCreateFromListAsync" disabled="@_bulkBusy">
+                Siyahıdan yarat
+            </button>
+
+            <div style="text-align:center;font-size:11px;color:var(--ink-500);margin:6px 0;">— və ya —</div>
+
+            <div style="display:flex;gap:8px;align-items:center;">
+                <div class="oi-field" style="flex:1;">
+                    <input type="number" min="1" @bind="_bulkCount" />
+                </div>
+                <button class="oi-btn oi-btn-gold" @onclick="BulkCreateCountAsync" disabled="@_bulkBusy">Generasiya et</button>
+            </div>
+
+            @if (_bulkCreated.Count > 0)
+            {
+                <div class="oi-alert oi-alert-success" style="margin-top:10px;">
+                    @_bulkCreated.Count istifadəçi yaradıldı.
+                    <div style="max-height:120px;overflow-y:auto;margin-top:6px;font-size:11.5px;">
+                        @foreach (var u in _bulkCreated)
+                        {
+                            <div>@u.Username / @u.GeneratedPassword</div>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+
+    <div class="oi-card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+            <div class="oi-section-title" style="margin:0;">Bütün istifadəçilər (@_users.Count)</div>
+        </div>
+        <div class="oi-field" style="margin-bottom:12px;">
+            <span>🔍</span>
+            <input placeholder="Ad və ya istifadəçi adı axtar..." @bind="_search" @bind:event="oninput" @onkeyup="OnSearchKeyUp" />
+        </div>
+
+        @if (_loading)
+        {
+            <div class="oi-spinner-center">Yüklənir...</div>
+        }
+        else if (_loadError is not null)
+        {
+            <div class="oi-alert oi-alert-error">@_loadError</div>
+        }
+        else
+        {
+            <table class="oi-table">
+                <thead>
+                    <tr><th>Ad</th><th>İstifadəçi adı</th><th>Bal</th><th>Vəziyyət</th><th></th></tr>
+                </thead>
+                <tbody>
+                    @foreach (var user in _users)
+                    {
+                        <tr>
+                            <td>@user.FullName</td>
+                            <td>@user.Username</td>
+                            <td>@user.TotalPoints</td>
+                            <td>
+                                @if (user.IsActive)
+                                {
+                                    <span class="oi-badge">Aktiv</span>
+                                }
+                                else
+                                {
+                                    <span class="oi-badge" style="background:#F0E4E4;color:#A33A3A;">Deaktiv</span>
+                                }
+                            </td>
+                            <td style="white-space:nowrap;">
+                                <span class="oi-btn oi-btn-sm oi-btn-outline" @onclick="() => ToggleActiveAsync(user)">
+                                    @(user.IsActive ? "Deaktiv et" : "Aktiv et")
+                                </span>
+                                <span class="oi-btn oi-btn-sm oi-btn-outline" @onclick="() => ResetPasswordAsync(user)">Şifrəni sıfırla</span>
+                            </td>
+                        </tr>
+                    }
+                    @if (_users.Count == 0)
+                    {
+                        <tr><td colspan="5" style="text-align:center;color:var(--ink-500);">İstifadəçi tapılmadı.</td></tr>
+                    }
+                </tbody>
+            </table>
+        }
+
+        @if (_resetResult is not null)
+        {
+            <div class="oi-alert oi-alert-success" style="margin-top:12px;">
+                Yeni şifrə (@_resetResult.Username): <strong>@_resetResult.GeneratedPassword</strong>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    private List<UserSummaryDto> _users = new();
+    private bool _loading = true;
+    private string? _loadError;
+    private string _search = string.Empty;
+
+    private string _singleFullName = string.Empty;
+    private string _singleEmail = string.Empty;
+    private bool _singleBusy;
+    private string? _singleError;
+    private CreateUserResult? _lastCreated;
+
+    private string _bulkListText = string.Empty;
+    private int _bulkCount = 5;
+    private bool _bulkBusy;
+    private string? _bulkError;
+    private List<CreateUserResult> _bulkCreated = new();
+
+    private CreateUserResult? _resetResult;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task OnSearchKeyUp(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter") await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        try
+        {
+            var result = await Api.GetUsersAsync(string.IsNullOrWhiteSpace(_search) ? null : _search);
+            _users = result.ToList();
+        }
+        catch (ApiException ex)
+        {
+            _loadError = ex.Message;
+        }
+        catch
+        {
+            _loadError = "İstifadəçilər yüklənə bilmədi.";
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task CreateSingleAsync()
+    {
+        _singleError = null;
+        if (string.IsNullOrWhiteSpace(_singleFullName))
+        {
+            _singleError = "Ad Soyad tələb olunur.";
+            return;
+        }
+
+        _singleBusy = true;
+        try
+        {
+            var request = new CreateUserRequest(_singleFullName.Trim(), string.IsNullOrWhiteSpace(_singleEmail) ? null : _singleEmail.Trim(), null, null, null, null);
+            _lastCreated = await Api.CreateUserAsync(request);
+            _singleFullName = string.Empty;
+            _singleEmail = string.Empty;
+            await LoadAsync();
+        }
+        catch (ApiException ex)
+        {
+            _singleError = ex.Message;
+        }
+        catch
+        {
+            _singleError = "İstifadəçi yaradıla bilmədi.";
+        }
+        finally
+        {
+            _singleBusy = false;
+        }
+    }
+
+    private async Task BulkCreateFromListAsync()
+    {
+        _bulkError = null;
+        var rows = new List<BulkCreateUsersRowRequest>();
+        foreach (var line in _bulkListText.Split('\n', StringSplitOptions.RemoveEmptyEntries))
+        {
+            var parts = line.Split(',', StringSplitOptions.TrimEntries);
+            if (parts.Length == 0 || string.IsNullOrWhiteSpace(parts[0])) continue;
+            rows.Add(new BulkCreateUsersRowRequest(parts[0], parts.Length > 1 ? parts[1] : null, null));
+        }
+
+        if (rows.Count == 0)
+        {
+            _bulkError = "Ən azı bir sətir daxil edin.";
+            return;
+        }
+
+        _bulkBusy = true;
+        try
+        {
+            var result = await Api.BulkCreateUsersFromListAsync(rows);
+            _bulkCreated = result.CreatedUsers.ToList();
+            _bulkListText = string.Empty;
+            await LoadAsync();
+        }
+        catch (ApiException ex)
+        {
+            _bulkError = ex.Message;
+        }
+        catch
+        {
+            _bulkError = "Toplu yaratma uğursuz oldu.";
+        }
+        finally
+        {
+            _bulkBusy = false;
+        }
+    }
+
+    private async Task BulkCreateCountAsync()
+    {
+        _bulkError = null;
+        if (_bulkCount <= 0)
+        {
+            _bulkError = "Say 1-dən böyük olmalıdır.";
+            return;
+        }
+
+        _bulkBusy = true;
+        try
+        {
+            var result = await Api.BulkCreateUsersAsync(_bulkCount);
+            _bulkCreated = result.CreatedUsers.ToList();
+            await LoadAsync();
+        }
+        catch (ApiException ex)
+        {
+            _bulkError = ex.Message;
+        }
+        catch
+        {
+            _bulkError = "Toplu yaratma uğursuz oldu.";
+        }
+        finally
+        {
+            _bulkBusy = false;
+        }
+    }
+
+    private async Task ToggleActiveAsync(UserSummaryDto user)
+    {
+        try
+        {
+            await Api.SetUserActiveAsync(user.Id, !user.IsActive);
+            await LoadAsync();
+        }
+        catch (ApiException ex)
+        {
+            _loadError = ex.Message;
+        }
+        catch
+        {
+            _loadError = "Əməliyyat uğursuz oldu.";
+        }
+    }
+
+    private async Task ResetPasswordAsync(UserSummaryDto user)
+    {
+        try
+        {
+            _resetResult = await Api.ResetPasswordAsync(user.Id);
+        }
+        catch (ApiException ex)
+        {
+            _loadError = ex.Message;
+        }
+        catch
+        {
+            _loadError = "Şifrə sıfırlana bilmədi.";
+        }
+    }
+}

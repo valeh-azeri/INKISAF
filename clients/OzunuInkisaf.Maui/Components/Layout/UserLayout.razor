@@ -1,0 +1,45 @@
+@inherits LayoutComponentBase
+@inject NavigationManager Nav
+@inject AuthState Auth
+
+<div class="oi-app-shell">
+    <div class="oi-content">
+        @Body
+    </div>
+
+    <nav class="oi-bottom-nav">
+        <a href="/home" class="@ActiveClass("/home")">
+            <span class="icon">🏠</span>
+            <span>Ana səhifə</span>
+        </a>
+        <a href="/library" class="@ActiveClass("/library")">
+            <span class="icon">📚</span>
+            <span>Kitabxana</span>
+        </a>
+        <a href="/khatim" class="@ActiveClass("/khatim")">
+            <span class="icon">☾</span>
+            <span>Xətim</span>
+        </a>
+        <a href="/tally" class="@ActiveClass("/tally")">
+            <span class="icon">✓</span>
+            <span>Çətələ</span>
+        </a>
+        <a href="/profile" class="@ActiveClass("/profile")">
+            <span class="icon">👤</span>
+            <span>Profil</span>
+        </a>
+    </nav>
+</div>
+
+@code {
+    private string ActiveClass(string path) =>
+        Nav.Uri.EndsWith(path, StringComparison.OrdinalIgnoreCase) ? "active" : "";
+
+    protected override void OnInitialized()
+    {
+        if (!Auth.IsAuthenticated)
+        {
+            Nav.NavigateTo("/login");
+        }
+    }
+}

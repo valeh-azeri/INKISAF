@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>OzunuInkisaf.Application</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Abstractions only (DbSet<T>, DbContext) — the SqlServer provider is
+         wired up in Infrastructure so Application stays persistence-agnostic. -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="8.0.10" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\OzunuInkisaf.Domain\OzunuInkisaf.Domain.csproj" />
+    <ProjectReference Include="..\OzunuInkisaf.Contracts\OzunuInkisaf.Contracts.csproj" />
+  </ItemGroup>
+
+</Project>
