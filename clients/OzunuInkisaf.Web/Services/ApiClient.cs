@@ -187,6 +187,9 @@ public class ApiClient
     public Task SetUserActiveAsync(Guid userId, bool isActive) =>
         SendNoContentAsync(() => _http.PostAsync($"api/users/{userId}/active?isActive={isActive}", null));
 
+    public Task DeleteUserAsync(Guid userId) =>
+        SendNoContentAsync(() => _http.DeleteAsync($"api/users/{userId}"));
+
     public Task<CreateUserResult> ResetPasswordAsync(Guid userId) =>
         SendAsync<CreateUserResult>(() => _http.PostAsync($"api/users/{userId}/reset-password", null));
 

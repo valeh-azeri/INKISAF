@@ -76,6 +76,16 @@ public class UsersController : ControllerBase
     }
 
     /// <summary>
+    /// İstifadəçini və ona aid şəxsi qeydləri tamamilə silir (admin silinə bilməz).
+    /// </summary>
+    [HttpDelete("{userId:guid}")]
+    public async Task<IActionResult> Delete(Guid userId, CancellationToken cancellationToken)
+    {
+        await _userService.DeleteAsync(userId, cancellationToken);
+        return NoContent();
+    }
+
+    /// <summary>
     /// Admin-in bu istifadəçinin hesabına şifrəsini bilmədən birbaşa daxil
     /// olması üçün onun adına bir token verir (məs. lazım olduqda şifrəsini
     /// dəyişmək üçün). Client tərəf admin-in öz token-ini müvəqqəti saxlayıb

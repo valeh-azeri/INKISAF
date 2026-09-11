@@ -102,6 +102,10 @@ a:hover { color: var(--gold-600); }
   display: flex; flex-direction: column; padding: 20px 14px;
 }
 .oi-admin-sidebar .brand { font-family: 'Lora', serif; font-size: 17px; color: white; margin-bottom: 22px; padding: 0 6px; }
+.oi-admin-topbar-mobile { display: none; }
+.oi-hamburger { display: none; }
+.oi-admin-backdrop { display: none; }
+.oi-admin-dropdown { display: contents; }
 .oi-admin-navlinks { display: flex; flex-direction: column; flex: 1; min-height: 0; }
 .oi-admin-actions { display: flex; flex-direction: column; }
 .oi-admin-sidebar a {
@@ -166,24 +170,44 @@ table.oi-table td { padding: 10px; border-bottom: 1px solid var(--border); }
 
 @media (max-width: 700px) {
   .oi-admin-shell { flex-direction: column; }
+
   .oi-admin-sidebar {
-    width: 100%; flex-direction: row; align-items: stretch; overflow: hidden;
-    padding: 0;
+    width: 100%; flex-direction: column; align-items: stretch; overflow: visible;
+    padding: 0; position: relative; z-index: 50;
   }
   .oi-admin-sidebar .brand { display: none; }
-  .oi-admin-sidebar a {
-    white-space: nowrap; flex-shrink: 0; margin-bottom: 0;
+
+  .oi-admin-topbar-mobile {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 12px 16px;
   }
-  /* Naviqasiya linkləri üfüqi sürüşür; "Çıxış" isə sürüşməyən,
-     həmişə görünən sahədə sağda sabit qalır. */
-  .oi-admin-navlinks {
-    flex-direction: row; overflow-x: auto; padding: 10px 8px; gap: 4px;
+  .oi-admin-topbar-mobile .brand-mobile { font-family: 'Lora', serif; font-size: 16px; color: white; }
+  .oi-hamburger {
+    display: block; background: none; border: none; color: white; font-size: 22px;
+    line-height: 1; cursor: pointer; padding: 6px 8px; border-radius: 8px;
   }
+  .oi-hamburger:active { background: rgba(255,255,255,0.1); }
+
+  /* Menyu qapalı: link/əməliyyat siyahısı görünmür. "open" əlavə olunanda
+     sidebar-ın altından açılan bir panel kimi göstərilir (backdrop ilə). */
+  .oi-admin-dropdown { display: none; }
+  .oi-admin-sidebar.open .oi-admin-dropdown {
+    display: block; position: absolute; left: 0; right: 0; top: 100%;
+    background: var(--green-900); padding: 8px 14px 14px;
+    box-shadow: 0 16px 28px rgba(0,0,0,0.3);
+    max-height: calc(100vh - 52px); overflow-y: auto;
+  }
+  .oi-admin-navlinks { flex-direction: column; }
   .oi-admin-actions {
-    flex-direction: row; flex-shrink: 0; align-items: center; gap: 4px;
-    padding: 10px 8px; border-left: 1px solid rgba(255,255,255,0.15);
+    flex-direction: column; border-top: 1px solid rgba(255,255,255,0.15);
+    margin-top: 6px; padding-top: 6px;
   }
-  .oi-admin-actions a:first-child { display: none; }
+  .oi-admin-actions a:first-child { display: block; }
+
+  .oi-admin-backdrop {
+    display: block; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 40;
+  }
+
   .oi-admin-main { padding: 16px; }
   .oi-two-col { grid-template-columns: 1fr; }
 }

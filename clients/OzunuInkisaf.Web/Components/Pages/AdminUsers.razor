@@ -3,6 +3,7 @@
 @inject ApiClient Api
 @inject AuthState Auth
 @inject NavigationManager Nav
+@inject IJSRuntime JS
 
 <h2 class="heading" style="margin-bottom:18px;">İstifadəçilər</h2>
 
@@ -127,6 +128,7 @@
                                 </span>
                                 <span class="oi-btn oi-btn-sm oi-btn-outline" @onclick="() => ResetPasswordAsync(user)">Şifrəni sıfırla</span>
                                 <span class="oi-btn oi-btn-sm oi-btn-gold" @onclick="() => ImpersonateAsync(user)">Bu istifadəçi kimi daxil ol</span>
+                                <span class="oi-btn oi-btn-sm oi-btn-outline" style="color:#A33A3A;border-color:#A33A3A;" @onclick="() => DeleteAsync(user)">Sil</span>
                             </td>
                         </tr>
                     }
@@ -349,6 +351,27 @@
         catch
         {
             _actionError = "Bu istifadəçi kimi daxil olmaq mümkün olmadı.";
+        }
+    }
+
+    private async Task DeleteAsync(UserSummaryDto user)
+    {
+        _actionError = null;
+        var confirmed = await JS.InvokeAsync<bool>("confirm", $"{user.FullName} ({user.Username}) həmişəlik silinsin? Bu geri qaytarıla bilməz.");
+        if (!confirmed) return;
+
+        try
+        {
+            await Api.DeleteUserAsync(user.Id);
+            await LoadAsync();
+        }
+        catch (ApiException ex)
+        {
+            _actionError = ex.Message;
+        }
+        catch
+        {
+            _actionError = "İstifadəçi silinə bilmədi.";
         }
     }
 }

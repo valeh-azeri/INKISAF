@@ -155,6 +155,41 @@ public class UserService : IUserService
         return new CreateUserResult(user.Id, user.FullName, user.Username, password);
     }
 
+    public async Task DeleteAsync(Guid userId, CancellationToken cancellationToken = default)
+    {
+        var user = await _db.Users.SingleOrDefaultAsync(u => u.Id == userId, cancellationToken)
+            ?? throw new NotFoundException(nameof(User), userId);
+
+        if (user.Role == UserRole.Admin)
+        {
+            throw new ValidationAppException("Admin hesabı silinə bilməz.");
+        }
+
+        var readingProgresses = await _db.ReadingProgresses.Where(r => r.UserId == userId).ToListAsync(cancellationToken);
+        _db.ReadingProgresses.RemoveRange(readingProgresses);
+
+        var tallyEntries = await _db.TallyEntries.Where(e => e.UserId == userId).ToListAsync(cancellationToken);
+        _db.TallyEntries.RemoveRange(tallyEntries);
+
+        var pointsTransactions = await _db.PointsTransactions.Where(p => p.UserId == userId).ToListAsync(cancellationToken);
+        _db.PointsTransactions.RemoveRange(pointsTransactions);
+
+        var juzClaims = await _db.JuzClaims.Where(j => j.UserId == userId).ToListAsync(cancellationToken);
+        foreach (var claim in juzClaims)
+        {
+            claim.UserId = null;
+            claim.ClaimedAt = null;
+            claim.IsCompleted = false;
+            claim.CompletedAt = null;
+            claim.PageRangeStart = null;
+            claim.PageRangeEnd = null;
+        }
+
+        _db.Users.Remove(user);
+
+        await _db.SaveChangesAsync(cancellationToken);
+    }
+
     private async Task<string> EnsureUniqueUsernameAsync(string baseUsername, CancellationToken cancellationToken)
     {
         var candidate = baseUsername;

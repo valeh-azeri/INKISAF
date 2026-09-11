@@ -1,22 +1,33 @@
 @inherits LayoutComponentBase
+@implements IDisposable
 @inject NavigationManager Nav
 @inject AuthState Auth
 
 <div class="oi-admin-shell">
-    <aside class="oi-admin-sidebar">
-        <div class="brand">Özünü İnkişaf · Admin</div>
-        <div class="oi-admin-navlinks">
-            <a href="/admin/dashboard" class="@ActiveClass("/admin/dashboard")">Dashboard</a>
-            <a href="/admin/books" class="@ActiveClass("/admin/books")">Kitablar</a>
-            <a href="/admin/users" class="@ActiveClass("/admin/users")">İstifadəçilər</a>
-            <a href="/admin/khatim" class="@ActiveClass("/admin/khatim")">Xətim</a>
-            <a href="/admin/tally" class="@ActiveClass("/admin/tally")">Çətələ</a>
-            <a href="/admin/duas" class="@ActiveClass("/admin/duas")">Dualar</a>
-            <a href="/admin/reports" class="@ActiveClass("/admin/reports")">Hesabatlar</a>
+    @if (_mobileMenuOpen)
+    {
+        <div class="oi-admin-backdrop" @onclick="CloseMenu"></div>
+    }
+    <aside class="oi-admin-sidebar @(_mobileMenuOpen ? "open" : "")">
+        <div class="oi-admin-topbar-mobile">
+            <div class="brand-mobile">Özünü İnkişaf · Admin</div>
+            <button type="button" class="oi-hamburger" @onclick="ToggleMenu" aria-label="Menyu">☰</button>
         </div>
-        <div class="oi-admin-actions">
-            <a href="/home" style="opacity:0.75;">← İstifadəçi görünüşünə keç</a>
-            <a href="#" @onclick="SignOut" @onclick:preventDefault="true">Çıxış</a>
+        <div class="brand">Özünü İnkişaf · Admin</div>
+        <div class="oi-admin-dropdown">
+            <div class="oi-admin-navlinks">
+                <a href="/admin/dashboard" class="@ActiveClass("/admin/dashboard")">Dashboard</a>
+                <a href="/admin/books" class="@ActiveClass("/admin/books")">Kitablar</a>
+                <a href="/admin/users" class="@ActiveClass("/admin/users")">İstifadəçilər</a>
+                <a href="/admin/khatim" class="@ActiveClass("/admin/khatim")">Xətim</a>
+                <a href="/admin/tally" class="@ActiveClass("/admin/tally")">Çətələ</a>
+                <a href="/admin/duas" class="@ActiveClass("/admin/duas")">Dualar</a>
+                <a href="/admin/reports" class="@ActiveClass("/admin/reports")">Hesabatlar</a>
+            </div>
+            <div class="oi-admin-actions">
+                <a href="/home" style="opacity:0.75;">← İstifadəçi görünüşünə keç</a>
+                <a href="#" @onclick="SignOut" @onclick:preventDefault="true">Çıxış</a>
+            </div>
         </div>
     </aside>
     <main class="oi-admin-main">
@@ -25,6 +36,8 @@
 </div>
 
 @code {
+    private bool _mobileMenuOpen;
+
     private string ActiveClass(string path) =>
         Nav.Uri.Contains(path, StringComparison.OrdinalIgnoreCase) ? "active" : "";
 
@@ -38,11 +51,31 @@
         {
             Nav.NavigateTo("/home");
         }
+
+        Nav.LocationChanged += OnLocationChanged;
     }
+
+    private void OnLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
+    {
+        if (_mobileMenuOpen)
+        {
+            _mobileMenuOpen = false;
+            InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private void ToggleMenu() => _mobileMenuOpen = !_mobileMenuOpen;
+
+    private void CloseMenu() => _mobileMenuOpen = false;
 
     private void SignOut()
     {
         Auth.SignOut();
         Nav.NavigateTo("/login");
+    }
+
+    public void Dispose()
+    {
+        Nav.LocationChanged -= OnLocationChanged;
     }
 }
