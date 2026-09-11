@@ -22,11 +22,8 @@ jobs:
       - name: Install Android workload
         run: dotnet workload install android --skip-manifest-update
 
-      - name: Restore (android only)
-        run: dotnet restore clients/OzunuInkisaf.Maui/OzunuInkisaf.Maui.csproj -p:TargetFrameworks=net8.0-android
-
       - name: Build APK
-        run: dotnet build clients/OzunuInkisaf.Maui/OzunuInkisaf.Maui.csproj -f net8.0-android -c Release -p:TargetFrameworks=net8.0-android
+        run: dotnet build clients/OzunuInkisaf.Maui/OzunuInkisaf.Maui.csproj -f net8.0-android -c Release
 
       - name: Find APK
         id: find_apk
