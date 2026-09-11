@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "ozunuinkisaf-web",
+      "runtimeExecutable": "dotnet",
+      "runtimeArgs": ["run", "--project", "clients/OzunuInkisaf.Web"],
+      "port": 5019
+    }
+  ]
+}

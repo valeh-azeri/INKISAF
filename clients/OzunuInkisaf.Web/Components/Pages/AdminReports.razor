@@ -1,0 +1,150 @@
+@page "/admin/reports"
+@layout AdminLayout
+@inject ApiClient Api
+
+<h2 class="heading" style="margin-bottom:18px;">Hesabatlar</h2>
+
+<div class="oi-card" style="margin-bottom:18px;">
+    <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;">
+        <FilterChip Label="Həftəlik" Active="@(_period == ReportPeriodDto.Weekly)" OnClick='() => SetPeriod(ReportPeriodDto.Weekly)' />
+        <FilterChip Label="Aylıq" Active="@(_period == ReportPeriodDto.Monthly)" OnClick='() => SetPeriod(ReportPeriodDto.Monthly)' />
+        <FilterChip Label="İllik" Active="@(_period == ReportPeriodDto.Yearly)" OnClick='() => SetPeriod(ReportPeriodDto.Yearly)' />
+        <FilterChip Label="Xüsusi aralıq" Active="@(_period == ReportPeriodDto.Custom)" OnClick='() => SetPeriod(ReportPeriodDto.Custom)' />
+    </div>
+
+    @if (_period == ReportPeriodDto.Custom)
+    {
+        <div style="display:flex;gap:8px;margin-bottom:14px;">
+            <div class="oi-field"><input type="date" @bind="_from" /></div>
+            <div class="oi-field"><input type="date" @bind="_to" /></div>
+        </div>
+    }
+
+    <div style="display:flex;gap:16px;margin-bottom:14px;flex-wrap:wrap;">
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px;">
+            <input type="checkbox" @bind="_includeBooks" /> Kitab oxuma
+        </label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px;">
+            <input type="checkbox" @bind="_includeKhatim" /> Xətim
+        </label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px;">
+            <input type="checkbox" @bind="_includeTally" /> Çətələ balı
+        </label>
+    </div>
+
+    <div style="display:flex;gap:10px;">
+        <button class="oi-btn oi-btn-primary" @onclick="LoadAsync" disabled="@_busy">Hesabatı göstər</button>
+        <button class="oi-btn oi-btn-gold" @onclick="DeclareWinnerAsync" disabled="@(_busy || _result is null)">Qalib elan et</button>
+    </div>
+</div>
+
+@if (!string.IsNullOrEmpty(_error))
+{
+    <div class="oi-alert oi-alert-error">@_error</div>
+}
+@if (_winner is not null)
+{
+    <div class="oi-alert oi-alert-success">
+        🏆 Qalib: <strong>@_winner.UserFullName</strong> (@_winner.TotalScore bal) — @_winner.PeriodStart.ToString("d MMM") – @_winner.PeriodEnd.ToString("d MMM")
+    </div>
+}
+
+@if (_busy)
+{
+    <div class="oi-spinner-center">Yüklənir...</div>
+}
+else if (_result is not null)
+{
+    <div class="oi-card">
+        <div class="oi-section-title">@_result.From.ToString("d MMMM yyyy") — @_result.To.ToString("d MMMM yyyy") reytinqi</div>
+        <table class="oi-table">
+            <thead>
+                <tr><th>Sıra</th><th>İstifadəçi</th><th>Oxunan səhifə</th><th>Xətim iştirakı</th><th>Çətələ balı</th><th>Ümumi bal</th></tr>
+            </thead>
+            <tbody>
+                @foreach (var row in _result.Rows)
+                {
+                    <tr>
+                        <td>@Medal(row.Rank) @row.Rank</td>
+                        <td>@row.FullName</td>
+                        <td>@row.PagesRead</td>
+                        <td>@row.JuzParticipation</td>
+                        <td>@row.TallyPoints</td>
+                        <td><strong>@row.TotalScore</strong></td>
+                    </tr>
+                }
+                @if (_result.Rows.Count == 0)
+                {
+                    <tr><td colspan="6" style="text-align:center;color:var(--ink-500);">Bu dövr üçün məlumat yoxdur.</td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+@code {
+    private ReportPeriodDto _period = ReportPeriodDto.Weekly;
+    private DateOnly _from = DateOnly.FromDateTime(DateTime.Today.AddDays(-7));
+    private DateOnly _to = DateOnly.FromDateTime(DateTime.Today);
+    private bool _includeBooks = true;
+    private bool _includeKhatim = true;
+    private bool _includeTally = true;
+    private bool _busy;
+    private string? _error;
+    private LeaderboardResultDto? _result;
+    private WinnerAwardDto? _winner;
+
+    private void SetPeriod(ReportPeriodDto period) => _period = period;
+
+    private static string Medal(int rank) => rank switch { 1 => "🥇", 2 => "🥈", 3 => "🥉", _ => "" };
+
+    private ReportFilterRequest BuildFilter() => new(
+        _period,
+        _period == ReportPeriodDto.Custom ? _from : null,
+        _period == ReportPeriodDto.Custom ? _to : null,
+        _includeBooks,
+        _includeKhatim,
+        _includeTally);
+
+    private async Task LoadAsync()
+    {
+        _busy = true;
+        _error = null;
+        _winner = null;
+        try
+        {
+            _result = await Api.GetLeaderboardAsync(BuildFilter());
+        }
+        catch (ApiException ex)
+        {
+            _error = ex.Message;
+        }
+        catch
+        {
+            _error = "Hesabat yüklənə bilmədi.";
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task DeclareWinnerAsync()
+    {
+        if (_result is null) return;
+        _error = null;
+        try
+        {
+            var request = new DeclareWinnerRequest(_result.From, _result.To, _includeBooks, _includeKhatim, _includeTally);
+            _winner = await Api.DeclareWinnerAsync(request);
+        }
+        catch (ApiException ex)
+        {
+            _error = ex.Message;
+        }
+        catch
+        {
+            _error = "Qalib elan edilə bilmədi.";
+        }
+    }
+}

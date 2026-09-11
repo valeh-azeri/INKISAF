@@ -1,0 +1,12 @@
+@inject NavigationManager Nav
+
+<div class="oi-card" style="text-align:center;padding:14px 8px;cursor:pointer;" @onclick="() => Nav.NavigateTo(Href)">
+    <div style="font-size:22px;">@Icon</div>
+    <div style="font-size:11.5px;font-weight:700;color:var(--green-800);margin-top:6px;">@Label</div>
+</div>
+
+@code {
+    [Parameter] public string Icon { get; set; } = "";
+    [Parameter] public string Label { get; set; } = "";
+    [Parameter] public string Href { get; set; } = "/";
+}

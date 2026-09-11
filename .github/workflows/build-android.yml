@@ -1,0 +1,57 @@
+name: Build Android APK
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "clients/OzunuInkisaf.Maui/**"
+      - "src/OzunuInkisaf.Contracts/**"
+      - ".github/workflows/build-android.yml"
+  workflow_dispatch: {}
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.404"
+
+      - name: Install MAUI Android workload
+        run: dotnet workload install android maui-windows --skip-manifest-update
+
+      - name: Restore
+        run: dotnet restore clients/OzunuInkisaf.Maui/OzunuInkisaf.Maui.csproj
+
+      - name: Build APK
+        run: dotnet build clients/OzunuInkisaf.Maui/OzunuInkisaf.Maui.csproj -f net8.0-android -c Release
+
+      - name: Find APK
+        id: find_apk
+        shell: pwsh
+        run: |
+          $apk = Get-ChildItem -Path "clients/OzunuInkisaf.Maui/bin/Release/net8.0-android" -Filter "*-Signed.apk" -Recurse | Select-Object -First 1
+          if (-not $apk) {
+            $apk = Get-ChildItem -Path "clients/OzunuInkisaf.Maui/bin/Release/net8.0-android" -Filter "*.apk" -Recurse | Select-Object -First 1
+          }
+          Copy-Item $apk.FullName "OzunuInkisaf.apk"
+          echo "path=OzunuInkisaf.apk" >> $env:GITHUB_OUTPUT
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: OzunuInkisaf-android
+          path: OzunuInkisaf.apk
+
+      - name: Publish latest release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest-android
+          name: "Android APK (avtomatik, ən son)"
+          body: "Bu, `main` branch-inə hər push-da avtomatik yenilənən Android APK-dır. Telefonunuzda bu linkdən yükləyib quraşdıra bilərsiniz."
+          files: OzunuInkisaf.apk
+          prerelease: true
+          make_latest: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

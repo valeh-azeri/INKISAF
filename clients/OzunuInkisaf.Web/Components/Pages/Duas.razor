@@ -1,0 +1,106 @@
+@page "/duas"
+@inject ApiClient Api
+
+<div class="oi-topbar" style="margin:-16px -16px 16px -16px;">
+    <div class="title">Dualar</div>
+</div>
+
+<div class="oi-field" style="margin-bottom:12px;">
+    <span>🔍</span>
+    <input placeholder="Dua axtar..." @bind="_search" @bind:event="oninput" @onkeyup="OnSearchKeyUp" />
+</div>
+
+<div style="display:flex;gap:8px;margin-bottom:14px;overflow-x:auto;">
+    <FilterChip Label="Hamısı" Active="@(_category == null)" OnClick='() => SetCategory(null)' />
+    <FilterChip Label="Gündəlik" Active="@(_category == "Daily")" OnClick='() => SetCategory("Daily")' />
+    <FilterChip Label="Səfər" Active="@(_category == "Travel")" OnClick='() => SetCategory("Travel")' />
+    <FilterChip Label="Sıxıntı" Active="@(_category == "Distress")" OnClick='() => SetCategory("Distress")' />
+    <FilterChip Label="Yuxu" Active="@(_category == "Sleep")" OnClick='() => SetCategory("Sleep")' />
+</div>
+
+@if (_loading)
+{
+    <div class="oi-spinner-center">Yüklənir...</div>
+}
+else if (_error is not null)
+{
+    <div class="oi-alert oi-alert-error">@_error</div>
+}
+else if (_duas.Count == 0)
+{
+    <div class="oi-card" style="text-align:center;color:var(--ink-500);">Heç bir dua tapılmadı.</div>
+}
+else
+{
+    <div style="display:flex;flex-direction:column;gap:10px;">
+        @foreach (var dua in _duas)
+        {
+            <div class="oi-card" style="cursor:pointer;" @onclick="() => Toggle(dua.Id)">
+                <div class="heading" style="font-size:15px;">@dua.Title</div>
+                @if (_expanded != dua.Id)
+                {
+                    <div style="font-size:12px;color:var(--ink-500);margin-top:3px;">Ərəbcə mətn və tərcümə</div>
+                }
+                else
+                {
+                    <div dir="rtl" style="font-size:19px;line-height:1.9;margin:10px 0;color:var(--green-900);">@dua.ArabicText</div>
+                    @if (!string.IsNullOrEmpty(dua.Transliteration))
+                    {
+                        <div style="font-size:12.5px;font-style:italic;color:var(--ink-500);margin-bottom:8px;">@dua.Transliteration</div>
+                    }
+                    <div style="font-size:13.5px;color:var(--ink-700);">@dua.Translation</div>
+                }
+            </div>
+        }
+    </div>
+}
+
+@code {
+    private List<DuaDto> _duas = new();
+    private bool _loading = true;
+    private string? _error;
+    private string? _search;
+    private string? _category;
+    private Guid? _expanded;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private void Toggle(Guid id) => _expanded = _expanded == id ? null : id;
+
+    private async Task OnSearchKeyUp(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            await LoadAsync();
+        }
+    }
+
+    private async Task SetCategory(string? category)
+    {
+        _category = category;
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        _error = null;
+        try
+        {
+            var result = await Api.GetDuasAsync(_category, string.IsNullOrWhiteSpace(_search) ? null : _search);
+            _duas = result.ToList();
+        }
+        catch (ApiException ex)
+        {
+            _error = ex.Message;
+        }
+        catch
+        {
+            _error = "Dualar yüklənə bilmədi.";
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+}

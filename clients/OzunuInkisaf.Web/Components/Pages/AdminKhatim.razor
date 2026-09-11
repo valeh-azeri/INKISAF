@@ -1,0 +1,103 @@
+@page "/admin/khatim"
+@layout AdminLayout
+@inject ApiClient Api
+
+<h2 class="heading" style="margin-bottom:18px;">Xətim idarəetməsi</h2>
+
+@if (_loading)
+{
+    <div class="oi-spinner-center">Yüklənir...</div>
+}
+else if (_error is not null)
+{
+    <div class="oi-alert oi-alert-error">@_error</div>
+}
+else
+{
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-bottom:20px;">
+        <StatCard Label="TAMAMLANMIŞ XƏTMLƏR" Value="@_history.Count(h => h.CompletedAt != null).ToString()" Hint="" />
+        <StatCard Label="HAZIRKI DÖVR" Value="@($"{_status?.CycleNumber}-ci")" Hint="" />
+        <StatCard Label="TAMAMLANMA" Value="@($"{_status?.CompletedJuzCount} / 30")" Hint="@($"{Percent}% · {30 - (_status?.CompletedJuzCount ?? 0)} cüz boşdur")" />
+        <StatCard Label="İŞTİRAKÇI SAYI" Value="@ParticipantCount.ToString()" Hint="" />
+    </div>
+
+    @if (_status is not null)
+    {
+        <div class="oi-card" style="margin-bottom:20px;">
+            <div class="oi-section-title">@_status.CycleNumber-ci Xətm — cüz bölgüsü</div>
+            <div style="display:grid;grid-template-columns:repeat(10,1fr);gap:6px;">
+                @foreach (var juz in _status.Juz.OrderBy(j => j.JuzNumber))
+                {
+                    var bg = juz.IsCompleted ? "var(--green-700)" : juz.UserId is not null ? "var(--gold-100)" : "var(--white)";
+                    var fg = juz.IsCompleted ? "white" : juz.UserId is not null ? "var(--gold-600)" : "var(--ink-500)";
+                    <div class="oi-card" title="@(juz.UserFullName ?? "Boşdur")" style="padding:8px 2px;text-align:center;background:@bg;color:@fg;">
+                        <div style="font-weight:700;font-size:12px;">@juz.JuzNumber</div>
+                    </div>
+                }
+            </div>
+            <div style="display:flex;gap:16px;margin-top:12px;font-size:11.5px;color:var(--ink-500);">
+                <span>🟩 Oxunub</span>
+                <span>🟨 Götürülüb</span>
+                <span>⬜ Boşdur</span>
+            </div>
+        </div>
+    }
+
+    <div class="oi-card">
+        <div class="oi-section-title">Xətm tarixçəsi</div>
+        <table class="oi-table">
+            <thead>
+                <tr><th>Dövr</th><th>Başlama</th><th>Tamamlanma</th><th>İştirakçı sayı</th></tr>
+            </thead>
+            <tbody>
+                @foreach (var h in _history.OrderByDescending(h => h.CycleNumber))
+                {
+                    <tr>
+                        <td>@h.CycleNumber-ci Xətm</td>
+                        <td>@h.StartedAt.ToLocalTime().ToString("dd.MM.yyyy")</td>
+                        <td>@(h.CompletedAt?.ToLocalTime().ToString("dd.MM.yyyy") ?? "Davam edir")</td>
+                        <td>@h.ParticipantCount</td>
+                    </tr>
+                }
+                @if (_history.Count == 0)
+                {
+                    <tr><td colspan="4" style="text-align:center;color:var(--ink-500);">Hələ tarixçə yoxdur.</td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+@code {
+    private KhatimCycleStatusDto2? _status;
+    private List<KhatimHistoryItemDto> _history = new();
+    private bool _loading = true;
+    private string? _error;
+
+    private int Percent => _status is { } s && s.Juz.Count > 0 ? (int)Math.Round(100.0 * s.CompletedJuzCount / 30) : 0;
+    private int ParticipantCount => _status?.Juz.Where(j => j.UserId is not null).Select(j => j.UserId).Distinct().Count() ?? 0;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var statusTask = Api.GetKhatimStatusAsync();
+            var historyTask = Api.GetKhatimHistoryAsync();
+            await Task.WhenAll(statusTask, historyTask);
+            _status = statusTask.Result;
+            _history = historyTask.Result.ToList();
+        }
+        catch (ApiException ex)
+        {
+            _error = ex.Message;
+        }
+        catch
+        {
+            _error = "Xətim məlumatı yüklənə bilmədi.";
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+}

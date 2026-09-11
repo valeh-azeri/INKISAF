@@ -1,0 +1,93 @@
+@page "/"
+@page "/login"
+@layout EmptyLayout
+@inject ApiClient Api
+@inject AuthState Auth
+@inject NavigationManager Nav
+
+<div style="flex:1;display:flex;flex-direction:column;">
+    <div style="position:relative;height:280px;background:linear-gradient(160deg,var(--green-900),var(--green-700) 70%);flex-shrink:0;display:flex;align-items:flex-end;padding:0 24px 28px;">
+        <div>
+            <div class="heading" style="color:white;font-size:24px;font-weight:600;">Özünü İnkişaf</div>
+            <div style="color:var(--gold-300);font-size:13px;margin-top:4px;">Oxu, izlə, inkişaf et</div>
+        </div>
+    </div>
+
+    <div style="flex:1;padding:28px 24px;display:flex;flex-direction:column;gap:14px;">
+        @if (!string.IsNullOrEmpty(_error))
+        {
+            <div class="oi-alert oi-alert-error">@_error</div>
+        }
+
+        <div class="oi-field">
+            <span>👤</span>
+            <input @bind="_username" @bind:event="oninput" placeholder="İstifadəçi adı" />
+        </div>
+        <div class="oi-field">
+            <span>🔒</span>
+            <input type="password" @bind="_password" @bind:event="oninput" placeholder="Şifrə" @onkeyup="OnKeyUp" />
+        </div>
+
+        <button class="oi-btn oi-btn-primary oi-btn-block" @onclick="LoginAsync" disabled="@_busy">
+            @(_busy ? "Yoxlanılır..." : "Daxil ol")
+        </button>
+
+        <div style="text-align:center;color:var(--ink-500);font-size:12.5px;margin-top:8px;">
+            İstifadəçi adı və şifrənizi admin sizə göndərib.
+        </div>
+    </div>
+</div>
+
+@code {
+    private string _username = string.Empty;
+    private string _password = string.Empty;
+    private string? _error;
+    private bool _busy;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Auth.TryRestoreAsync();
+        if (Auth.IsAuthenticated)
+        {
+            Nav.NavigateTo(Auth.IsAdmin ? "/admin/dashboard" : "/home");
+        }
+    }
+
+    private async Task OnKeyUp(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            await LoginAsync();
+        }
+    }
+
+    private async Task LoginAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_username) || string.IsNullOrWhiteSpace(_password))
+        {
+            _error = "İstifadəçi adı və şifrəni daxil edin.";
+            return;
+        }
+
+        _busy = true;
+        _error = null;
+        try
+        {
+            var response = await Api.LoginAsync(_username.Trim(), _password);
+            Auth.SetFromLogin(response);
+            Nav.NavigateTo(response.Role == UserRoleDto.Admin ? "/admin/dashboard" : "/home");
+        }
+        catch (ApiException ex)
+        {
+            _error = ex.Message;
+        }
+        catch (Exception)
+        {
+            _error = "Serverə qoşulmaq mümkün olmadı. İnternet bağlantınızı yoxlayın.";
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+}

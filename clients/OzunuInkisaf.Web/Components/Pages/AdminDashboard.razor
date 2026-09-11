@@ -1,0 +1,79 @@
+@page "/admin/dashboard"
+@layout AdminLayout
+@inject ApiClient Api
+
+<h2 class="heading" style="margin-bottom:18px;">İdarəetmə Paneli</h2>
+
+@if (_loading)
+{
+    <div class="oi-spinner-center">Yüklənir...</div>
+}
+else if (_error is not null)
+{
+    <div class="oi-alert oi-alert-error">@_error</div>
+}
+else if (_summary is not null)
+{
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin-bottom:22px;">
+        <StatCard Label="AKTİV İSTİFADƏÇİLƏR" Value="@_summary.ActiveUserCount.ToString()" Hint="@($"+{_summary.ActiveUserCountDeltaThisMonth} bu ay")" />
+        <StatCard Label="YÜKLƏNMİŞ KİTABLAR" Value="@_summary.TotalBooksCount.ToString()" Hint="@($"{_summary.BooksAddedThisMonth} yeni bu ay")" />
+        <StatCard Label="XƏTİM TAMAMLANMASI" Value="@($"{PercentComplete}%")" Hint="@($"{_summary.KhatimCompletedJuz} / {_summary.KhatimTotalJuz} cüz")" />
+        <StatCard Label="ORTA HƏFTƏLİK BAL" Value="@_summary.AverageWeeklyTallyScore.ToString()" Hint="" />
+    </div>
+
+    <div class="oi-card">
+        <div class="oi-section-title">Bu həftənin ilk beşliyi</div>
+        <table class="oi-table">
+            <thead>
+                <tr><th>#</th><th>İstifadəçi</th><th>Səhifə</th><th>Xətim</th><th>Çətələ</th><th>Ümumi</th></tr>
+            </thead>
+            <tbody>
+                @foreach (var row in _summary.TopFiveThisWeek)
+                {
+                    <tr>
+                        <td>@row.Rank</td>
+                        <td>@row.FullName</td>
+                        <td>@row.PagesRead</td>
+                        <td>@row.JuzParticipation</td>
+                        <td>@row.TallyPoints</td>
+                        <td><strong>@row.TotalScore</strong></td>
+                    </tr>
+                }
+                @if (_summary.TopFiveThisWeek.Count == 0)
+                {
+                    <tr><td colspan="6" style="text-align:center;color:var(--ink-500);">Hələ məlumat yoxdur.</td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+@code {
+    private AdminDashboardSummaryDto? _summary;
+    private bool _loading = true;
+    private string? _error;
+
+    private int PercentComplete => _summary is { KhatimTotalJuz: > 0 }
+        ? (int)Math.Round(100.0 * _summary.KhatimCompletedJuz / _summary.KhatimTotalJuz)
+        : 0;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _summary = await Api.GetDashboardSummaryAsync();
+        }
+        catch (ApiException ex)
+        {
+            _error = ex.Message;
+        }
+        catch
+        {
+            _error = "Məlumat yüklənə bilmədi.";
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+}

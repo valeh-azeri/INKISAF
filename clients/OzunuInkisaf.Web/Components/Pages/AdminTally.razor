@@ -1,0 +1,227 @@
+@page "/admin/tally"
+@layout AdminLayout
+@inject ApiClient Api
+
+<h2 class="heading" style="margin-bottom:18px;">Çətələ</h2>
+
+<div style="display:grid;grid-template-columns:380px 1fr;gap:20px;align-items:start;">
+    <div class="oi-card">
+        <div class="oi-section-title">Yeni çətələ yarat</div>
+
+        @if (!string.IsNullOrEmpty(_error))
+        {
+            <div class="oi-alert oi-alert-error">@_error</div>
+        }
+        @if (_createdTemplate is not null)
+        {
+            <div class="oi-alert oi-alert-success">
+                "@_createdTemplate.Title" yaradıldı (draft).
+                <div style="margin-top:6px;">
+                    <span class="oi-btn oi-btn-sm oi-btn-primary" @onclick="PublishAsync">Bütün istifadəçilərə yayımla</span>
+                </div>
+            </div>
+        }
+
+        <div class="oi-field" style="margin-bottom:8px;">
+            <input placeholder="Başlıq (məs. 15–21 Sentyabr həftəsi)" @bind="_title" @bind:event="oninput" />
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
+            <div class="oi-field"><input type="date" @bind="_weekStart" /></div>
+            <div class="oi-field"><input type="date" @bind="_weekEnd" /></div>
+        </div>
+        <div class="oi-field" style="margin-bottom:14px;">
+            <span style="font-size:11.5px;color:var(--ink-500);">Toplama tarixi</span>
+            <input type="date" @bind="_dueDate" />
+        </div>
+
+        <div class="oi-section-title" style="font-size:13px;">Bəndlər</div>
+        @foreach (var item in _items)
+        {
+            <div class="oi-card" style="margin-bottom:8px;padding:10px;">
+                <div class="oi-field" style="margin-bottom:6px;">
+                    <input placeholder="Bənd adı (məs. Gündəlik Quran oxunuşu)" @bind="item.Title" @bind:event="oninput" />
+                </div>
+                <div style="display:flex;gap:6px;">
+                    <select @bind="item.Frequency" style="flex:1;">
+                        <option value="Daily">Gündəlik</option>
+                        <option value="SpecificDays">Həftənin müəyyən günləri</option>
+                    </select>
+                    <input type="number" min="1" style="width:70px;" @bind="item.Points" title="Bal" />
+                    <span class="oi-btn oi-btn-sm oi-btn-outline" @onclick="() => _items.Remove(item)">🗑</span>
+                </div>
+                @if (item.Frequency == "SpecificDays")
+                {
+                    <div style="display:flex;gap:4px;margin-top:6px;flex-wrap:wrap;">
+                        @for (var d = 1; d <= 7; d++)
+                        {
+                            var day = d;
+                            <span class="oi-btn oi-btn-sm @(item.SpecificDays.Contains(day) ? "oi-btn-primary" : "oi-btn-outline")"
+                                  @onclick="() => ToggleDay(item, day)">
+                                @DayNames[day - 1]
+                            </span>
+                        }
+                    </div>
+                }
+            </div>
+        }
+        <button class="oi-btn oi-btn-outline oi-btn-block" style="margin-bottom:14px;" @onclick="AddItem">+ Bənd əlavə et</button>
+
+        <button class="oi-btn oi-btn-primary oi-btn-block" @onclick="CreateAsync" disabled="@_busy">
+            @(_busy ? "Yaradılır..." : "Çətələni yarat")
+        </button>
+    </div>
+
+    <div class="oi-card">
+        <div class="oi-section-title">Keçmiş çətələlər</div>
+        @if (_loading)
+        {
+            <div class="oi-spinner-center">Yüklənir...</div>
+        }
+        else
+        {
+            <table class="oi-table">
+                <thead>
+                    <tr><th>Başlıq</th><th>Həftə</th><th>Vəziyyət</th><th>İştirak</th></tr>
+                </thead>
+                <tbody>
+                    @foreach (var s in _summaries.OrderByDescending(s => s.WeekStartDate))
+                    {
+                        <tr>
+                            <td>@s.Title</td>
+                            <td>@s.WeekStartDate.ToString("d MMM") – @s.WeekEndDate.ToString("d MMM")</td>
+                            <td>@StatusLabel(s.Status)</td>
+                            <td>@((int)Math.Round(s.ParticipationRate * 100))%</td>
+                        </tr>
+                    }
+                    @if (_summaries.Count == 0)
+                    {
+                        <tr><td colspan="4" style="text-align:center;color:var(--ink-500);">Hələ çətələ yoxdur.</td></tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </div>
+</div>
+
+@code {
+    private static readonly string[] DayNames = { "B.e", "Ç.a", "Ç", "C.a", "C", "Ş", "Ba" };
+
+    private class ItemDraft
+    {
+        public string Title = string.Empty;
+        public string Frequency = "Daily";
+        public int Points = 5;
+        public List<int> SpecificDays = new();
+    }
+
+    private string _title = string.Empty;
+    private DateOnly _weekStart = DateOnly.FromDateTime(DateTime.Today);
+    private DateOnly _weekEnd = DateOnly.FromDateTime(DateTime.Today.AddDays(6));
+    private DateOnly _dueDate = DateOnly.FromDateTime(DateTime.Today.AddDays(7));
+    private List<ItemDraft> _items = new() { new ItemDraft { Title = "Gündəlik Quran oxunuşu" } };
+
+    private bool _busy;
+    private string? _error;
+    private TallyTemplateDto? _createdTemplate;
+
+    private List<TallyTemplateSummaryDto> _summaries = new();
+    private bool _loading = true;
+
+    protected override async Task OnInitializedAsync() => await LoadSummariesAsync();
+
+    private async Task LoadSummariesAsync()
+    {
+        _loading = true;
+        try
+        {
+            var result = await Api.GetTallySummariesAsync();
+            _summaries = result.ToList();
+        }
+        catch
+        {
+            // Siyahı yüklənə bilmədi — səhifə yenə də istifadə oluna bilər.
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private void AddItem() => _items.Add(new ItemDraft());
+
+    private void ToggleDay(ItemDraft item, int day)
+    {
+        if (!item.SpecificDays.Remove(day))
+        {
+            item.SpecificDays.Add(day);
+        }
+    }
+
+    private static string StatusLabel(TallyStatusDto status) => status switch
+    {
+        TallyStatusDto.Draft => "Qaralama",
+        TallyStatusDto.Published => "Yayımlanıb",
+        TallyStatusDto.Closed => "Bağlanıb",
+        _ => status.ToString(),
+    };
+
+    private async Task CreateAsync()
+    {
+        _error = null;
+        if (string.IsNullOrWhiteSpace(_title) || _items.Count == 0 || _items.Any(i => string.IsNullOrWhiteSpace(i.Title)))
+        {
+            _error = "Başlıq və bütün bəndlərin adı doldurulmalıdır.";
+            return;
+        }
+
+        _busy = true;
+        try
+        {
+            var request = new CreateTallyTemplateRequest(
+                _title.Trim(),
+                _weekStart,
+                _weekEnd,
+                _dueDate,
+                _items.Select(i => new CreateTallyItemRequest(
+                    i.Title.Trim(),
+                    i.Frequency == "Daily" ? TallyItemFrequencyDto.Daily : TallyItemFrequencyDto.SpecificDays,
+                    i.SpecificDays,
+                    i.Points)).ToList());
+
+            _createdTemplate = await Api.CreateTallyAsync(request);
+        }
+        catch (ApiException ex)
+        {
+            _error = ex.Message;
+        }
+        catch
+        {
+            _error = "Çətələ yaradıla bilmədi.";
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task PublishAsync()
+    {
+        if (_createdTemplate is null) return;
+        try
+        {
+            await Api.PublishTallyAsync(_createdTemplate.Id);
+            _createdTemplate = null;
+            _title = string.Empty;
+            _items = new() { new ItemDraft { Title = "Gündəlik Quran oxunuşu" } };
+            await LoadSummariesAsync();
+        }
+        catch (ApiException ex)
+        {
+            _error = ex.Message;
+        }
+        catch
+        {
+            _error = "Yayımlama uğursuz oldu.";
+        }
+    }
+}

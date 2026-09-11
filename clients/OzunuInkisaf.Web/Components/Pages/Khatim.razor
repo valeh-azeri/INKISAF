@@ -1,0 +1,161 @@
+@page "/khatim"
+@inject ApiClient Api
+@inject AuthState Auth
+
+<div class="oi-topbar" style="margin:-16px -16px 16px -16px;">
+    <div class="title">Xətim</div>
+</div>
+
+@if (_loading)
+{
+    <div class="oi-spinner-center">Yüklənir...</div>
+}
+else if (_error is not null)
+{
+    <div class="oi-alert oi-alert-error">@_error</div>
+}
+else if (_status is not null)
+{
+    <div class="oi-card" style="margin-bottom:14px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+            <div class="heading" style="font-size:17px;">@_status.CycleNumber-cü Xətm dövrü</div>
+            <span class="oi-badge oi-badge-gold">@_status.CompletedJuzCount / 30 cüz</span>
+        </div>
+        <div style="height:8px;background:var(--border);border-radius:100px;margin-top:10px;overflow:hidden;">
+            <div style="height:100%;width:@(_status.CompletedJuzCount * 100 / 30)%;background:var(--gold-500);"></div>
+        </div>
+        @if (_status.TotalPreviouslyCompletedCycles > 0)
+        {
+            <div style="font-size:12px;color:var(--ink-500);margin-top:8px;">
+                İndiyə qədər tamamlanmış xətm sayı: @_status.TotalPreviouslyCompletedCycles
+            </div>
+        }
+    </div>
+
+    @if (!string.IsNullOrEmpty(_actionError))
+    {
+        <div class="oi-alert oi-alert-error">@_actionError</div>
+    }
+
+    <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;">
+        @foreach (var juz in _status.Juz.OrderBy(j => j.JuzNumber))
+        {
+            var bg = juz.IsCompleted ? "var(--green-700)" : juz.UserId is not null ? "var(--gold-100)" : "var(--white)";
+            var fg = juz.IsCompleted ? "white" : juz.UserId is not null ? "var(--gold-600)" : "var(--ink-700)";
+            <div class="oi-card" style="padding:10px 6px;text-align:center;background:@bg;color:@fg;cursor:pointer;"
+                 @onclick="() => OnJuzClick(juz)">
+                <div style="font-weight:700;font-size:14px;">@juz.JuzNumber</div>
+                <div style="font-size:9px;margin-top:3px;">
+                    @(juz.IsCompleted ? "Oxunub" : juz.UserId is null ? "Boşdur" : juz.IsClaimedByCurrentUser ? "Sizindir" : "Götürülüb")
+                </div>
+            </div>
+        }
+    </div>
+
+    @if (_selectedJuz is not null)
+    {
+        <div class="oi-card" style="margin-top:14px;">
+            <div class="oi-section-title">Cüz @_selectedJuz.JuzNumber</div>
+            @if (_selectedJuz.PageRangeStart is not null)
+            {
+                <div style="font-size:12.5px;color:var(--ink-500);margin-bottom:10px;">
+                    Səhifə @_selectedJuz.PageRangeStart–@_selectedJuz.PageRangeEnd arası
+                </div>
+            }
+            @if (_selectedJuz.UserId is null)
+            {
+                <button class="oi-btn oi-btn-primary oi-btn-block" @onclick="ClaimAsync" disabled="@_busy">Götür</button>
+            }
+            else if (_selectedJuz.IsClaimedByCurrentUser && !_selectedJuz.IsCompleted)
+            {
+                <button class="oi-btn oi-btn-gold oi-btn-block" @onclick="CompleteAsync" disabled="@_busy">Oxudum, tamamla</button>
+            }
+            else
+            {
+                <div style="font-size:12.5px;color:var(--ink-500);">Bu cüz artıq götürülüb.</div>
+            }
+        </div>
+    }
+}
+
+@code {
+    private KhatimCycleStatusDto2? _status;
+    private JuzClaimDto? _selectedJuz;
+    private bool _loading = true;
+    private bool _busy;
+    private string? _error;
+    private string? _actionError;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        try
+        {
+            _status = await Api.GetKhatimStatusAsync();
+        }
+        catch (ApiException ex)
+        {
+            _error = ex.Message;
+        }
+        catch
+        {
+            _error = "Xətim məlumatı yüklənə bilmədi.";
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private void OnJuzClick(JuzClaimDto juz) => _selectedJuz = juz;
+
+    private async Task ClaimAsync()
+    {
+        if (_selectedJuz is null) return;
+        _busy = true;
+        _actionError = null;
+        try
+        {
+            _status = await Api.ClaimJuzAsync(_selectedJuz.JuzNumber);
+            _selectedJuz = _status.Juz.FirstOrDefault(j => j.JuzNumber == _selectedJuz.JuzNumber);
+        }
+        catch (ApiException ex)
+        {
+            _actionError = ex.Message;
+        }
+        catch
+        {
+            _actionError = "Cüz götürülə bilmədi.";
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task CompleteAsync()
+    {
+        if (_selectedJuz is null) return;
+        _busy = true;
+        _actionError = null;
+        try
+        {
+            _status = await Api.CompleteJuzAsync(_selectedJuz.JuzNumber);
+            _selectedJuz = _status.Juz.FirstOrDefault(j => j.JuzNumber == _selectedJuz.JuzNumber);
+        }
+        catch (ApiException ex)
+        {
+            _actionError = ex.Message;
+        }
+        catch
+        {
+            _actionError = "Əməliyyat uğursuz oldu.";
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+}
