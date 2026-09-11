@@ -19,15 +19,15 @@ jobs:
         with:
           dotnet-version: "8.0.404"
 
-      - name: Install workloads
-        run: dotnet workload install android wasm-tools-net8 --skip-manifest-update
-
       - name: Restrict TargetFrameworks to android-only for this CI checkout
         run: |
           sed -i \
             -e 's|<TargetFrameworks>net8.0-android;net8.0-ios;net8.0-maccatalyst</TargetFrameworks>|<TargetFrameworks>net8.0-android</TargetFrameworks>|' \
             -e '/IsOSPlatform..windows/d' \
             clients/OzunuInkisaf.Maui/OzunuInkisaf.Maui.csproj
+
+      - name: Workload restore (project-aware — picks exactly what this csproj needs)
+        run: dotnet workload restore clients/OzunuInkisaf.Maui/OzunuInkisaf.Maui.csproj
 
       - name: Build APK
         run: dotnet build clients/OzunuInkisaf.Maui/OzunuInkisaf.Maui.csproj -c Release
