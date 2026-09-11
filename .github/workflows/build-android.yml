@@ -19,8 +19,8 @@ jobs:
         with:
           dotnet-version: "8.0.404"
 
-      - name: Install MAUI Android workload
-        run: dotnet workload install android maui-windows --skip-manifest-update
+      - name: Install MAUI workloads
+        run: dotnet workload install android ios maccatalyst maui-windows --skip-manifest-update
 
       - name: Restore
         run: dotnet restore clients/OzunuInkisaf.Maui/OzunuInkisaf.Maui.csproj
