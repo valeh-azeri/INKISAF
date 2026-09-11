@@ -1,0 +1,36 @@
+## .NET
+bin/
+obj/
+*.user
+*.suo
+.vs/
+.vscode/
+*.userosscache
+*.sln.docstates
+
+## Build results
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+[Bb]uild/
+
+## MAUI / mobile
+*.ap_
+*.apk
+*.aab
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+## Rider / VS
+.idea/
+*.DotSettings.user
+
+## OS
+.DS_Store
+Thumbs.db
+
+## Secrets (never commit real connection strings/secrets)
+appsettings.Local.json
+*.pfx
