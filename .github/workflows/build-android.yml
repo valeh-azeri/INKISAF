@@ -22,8 +22,15 @@ jobs:
       - name: Install workloads
         run: dotnet workload install android wasm-tools-net8 --skip-manifest-update
 
+      - name: Restrict TargetFrameworks to android-only for this CI checkout
+        run: |
+          sed -i \
+            -e 's|<TargetFrameworks>net8.0-android;net8.0-ios;net8.0-maccatalyst</TargetFrameworks>|<TargetFrameworks>net8.0-android</TargetFrameworks>|' \
+            -e '/IsOSPlatform..windows/d' \
+            clients/OzunuInkisaf.Maui/OzunuInkisaf.Maui.csproj
+
       - name: Build APK
-        run: dotnet build clients/OzunuInkisaf.Maui/OzunuInkisaf.Maui.csproj -f net8.0-android -c Release
+        run: dotnet build clients/OzunuInkisaf.Maui/OzunuInkisaf.Maui.csproj -c Release
 
       - name: Find APK
         id: find_apk

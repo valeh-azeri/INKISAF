@@ -1,0 +1,221 @@
+@page "/admin/duas"
+@layout AdminLayout
+@inject ApiClient Api
+
+<h2 class="heading" style="margin-bottom:18px;">Dualar</h2>
+
+<div style="display:grid;grid-template-columns:360px 1fr;gap:20px;align-items:start;">
+    <div class="oi-card">
+        <div class="oi-section-title">@(_editingId is null ? "Yeni dua əlavə et" : "Duanı redaktə et")</div>
+        @if (!string.IsNullOrEmpty(_formError))
+        {
+            <div class="oi-alert oi-alert-error">@_formError</div>
+        }
+        <div class="oi-field" style="margin-bottom:8px;">
+            <input placeholder="Başlıq" @bind="_title" @bind:event="oninput" />
+        </div>
+        <div class="oi-field" style="margin-bottom:8px;">
+            <select @bind="_category">
+                <option value="Daily">Gündəlik</option>
+                <option value="Travel">Səfər</option>
+                <option value="Distress">Sıxıntı</option>
+                <option value="Sleep">Yuxu</option>
+                <option value="Other">Digər</option>
+            </select>
+        </div>
+        <div class="oi-field" style="margin-bottom:8px;align-items:flex-start;">
+            <textarea rows="3" dir="rtl" placeholder="Ərəbcə mətn" @bind="_arabicText" @bind:event="oninput" style="font-size:17px;"></textarea>
+        </div>
+        <div class="oi-field" style="margin-bottom:8px;align-items:flex-start;">
+            <textarea rows="2" placeholder="Transliterasiya (opsional)" @bind="_transliteration" @bind:event="oninput"></textarea>
+        </div>
+        <div class="oi-field" style="margin-bottom:14px;align-items:flex-start;">
+            <textarea rows="3" placeholder="Tərcümə" @bind="_translation" @bind:event="oninput"></textarea>
+        </div>
+
+        <button class="oi-btn oi-btn-primary oi-btn-block" @onclick="SaveAsync" disabled="@_saving">
+            @(_saving ? "Saxlanılır..." : _editingId is null ? "Dua əlavə et" : "Dəyişiklikləri yadda saxla")
+        </button>
+        @if (_editingId is not null)
+        {
+            <button class="oi-btn oi-btn-outline oi-btn-block" style="margin-top:8px;" @onclick="CancelEdit">Ləğv et</button>
+        }
+    </div>
+
+    <div class="oi-card">
+        <div class="oi-section-title">Bütün dualar (@_duas.Count)</div>
+        @if (_actionError is not null)
+        {
+            <div class="oi-alert oi-alert-error">@_actionError</div>
+        }
+        @if (_loading)
+        {
+            <div class="oi-spinner-center">Yüklənir...</div>
+        }
+        else if (_loadError is not null)
+        {
+            <div class="oi-alert oi-alert-error">@_loadError</div>
+        }
+        else
+        {
+            <table class="oi-table">
+                <thead>
+                    <tr><th>Başlıq</th><th>Kateqoriya</th><th></th></tr>
+                </thead>
+                <tbody>
+                    @foreach (var dua in _duas)
+                    {
+                        <tr>
+                            <td>@dua.Title</td>
+                            <td>@CategoryLabel(dua.Category)</td>
+                            <td style="white-space:nowrap;">
+                                <span class="oi-btn oi-btn-sm oi-btn-outline" @onclick="() => StartEdit(dua)">Redaktə et</span>
+                                <span class="oi-btn oi-btn-sm oi-btn-outline" style="color:#A33A3A;border-color:#A33A3A;" @onclick="() => DeleteAsync(dua)">Sil</span>
+                            </td>
+                        </tr>
+                    }
+                    @if (_duas.Count == 0)
+                    {
+                        <tr><td colspan="3" style="text-align:center;color:var(--ink-500);">Hələ dua yoxdur.</td></tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </div>
+</div>
+
+@code {
+    private List<DuaDto> _duas = new();
+    private bool _loading = true;
+    private string? _loadError;
+    private string? _actionError;
+
+    private Guid? _editingId;
+    private string _title = string.Empty;
+    private string _category = "Daily";
+    private string _arabicText = string.Empty;
+    private string _transliteration = string.Empty;
+    private string _translation = string.Empty;
+    private bool _saving;
+    private string? _formError;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        try
+        {
+            var result = await Api.GetDuasAsync();
+            _duas = result.ToList();
+        }
+        catch (ApiException ex)
+        {
+            _loadError = ex.Message;
+        }
+        catch
+        {
+            _loadError = "Dualar yüklənə bilmədi.";
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private static string CategoryLabel(DuaCategoryDto category) => category switch
+    {
+        DuaCategoryDto.Daily => "Gündəlik",
+        DuaCategoryDto.Travel => "Səfər",
+        DuaCategoryDto.Distress => "Sıxıntı",
+        DuaCategoryDto.Sleep => "Yuxu",
+        _ => "Digər",
+    };
+
+    private void StartEdit(DuaDto dua)
+    {
+        _editingId = dua.Id;
+        _title = dua.Title;
+        _category = dua.Category.ToString();
+        _arabicText = dua.ArabicText;
+        _transliteration = dua.Transliteration ?? string.Empty;
+        _translation = dua.Translation;
+        _formError = null;
+    }
+
+    private void CancelEdit()
+    {
+        _editingId = null;
+        _title = string.Empty;
+        _category = "Daily";
+        _arabicText = string.Empty;
+        _transliteration = string.Empty;
+        _translation = string.Empty;
+        _formError = null;
+    }
+
+    private async Task SaveAsync()
+    {
+        _formError = null;
+
+        if (string.IsNullOrWhiteSpace(_title) || string.IsNullOrWhiteSpace(_arabicText) || string.IsNullOrWhiteSpace(_translation))
+        {
+            _formError = "Başlıq, ərəbcə mətn və tərcümə tələb olunur.";
+            return;
+        }
+
+        var category = Enum.TryParse<DuaCategoryDto>(_category, out var parsed) ? parsed : DuaCategoryDto.Other;
+        var request = new UpsertDuaRequest(
+            _title.Trim(),
+            _arabicText.Trim(),
+            _translation.Trim(),
+            string.IsNullOrWhiteSpace(_transliteration) ? null : _transliteration.Trim(),
+            category);
+
+        _saving = true;
+        try
+        {
+            if (_editingId is null)
+            {
+                await Api.CreateDuaAsync(request);
+            }
+            else
+            {
+                await Api.UpdateDuaAsync(_editingId.Value, request);
+            }
+
+            CancelEdit();
+            await LoadAsync();
+        }
+        catch (ApiException ex)
+        {
+            _formError = ex.Message;
+        }
+        catch
+        {
+            _formError = "Dua saxlanıla bilmədi.";
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private async Task DeleteAsync(DuaDto dua)
+    {
+        _actionError = null;
+        try
+        {
+            await Api.DeleteDuaAsync(dua.Id);
+            await LoadAsync();
+        }
+        catch (ApiException ex)
+        {
+            _actionError = ex.Message;
+        }
+        catch
+        {
+            _actionError = "Dua silinə bilmədi.";
+        }
+    }
+}
