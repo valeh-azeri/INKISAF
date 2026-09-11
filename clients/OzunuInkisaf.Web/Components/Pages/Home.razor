@@ -16,7 +16,7 @@ else
 {
     @if (_continueReading is not null)
     {
-        <div class="oi-card" style="margin-bottom:14px;cursor:pointer;" @onclick='() => Nav.NavigateTo($"/reader/{_continueReading.Id}")'>
+        <div class="oi-card" style="margin-bottom:14px;cursor:pointer;" @onclick='() => Nav.NavigateTo($"reader/{_continueReading.Id}")'>
             <div class="oi-badge">Davam et</div>
             <div class="heading" style="font-size:17px;margin-top:8px;">@_continueReading.Title</div>
             @{
@@ -35,17 +35,17 @@ else
 
     <div class="oi-section-title">Sürətli keçid</div>
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px;">
-        <QuickLink Icon="📚" Label="Kitabxana" Href="/library" />
-        <QuickLink Icon="📖" Label="Quran Kərim" Href="/library" />
-        <QuickLink Icon="☾" Label="Xətim" Href="/khatim" />
-        <QuickLink Icon="✓" Label="Çətələ" Href="/tally" />
-        <QuickLink Icon="🤲" Label="Dualar" Href="/duas" />
-        <QuickLink Icon="👤" Label="Profil" Href="/profile" />
+        <QuickLink Icon="📚" Label="Kitabxana" Href="library" />
+        <QuickLink Icon="📖" Label="Quran Kərim" Href="library" />
+        <QuickLink Icon="☾" Label="Xətim" Href="khatim" />
+        <QuickLink Icon="✓" Label="Çətələ" Href="tally" />
+        <QuickLink Icon="🤲" Label="Dualar" Href="duas" />
+        <QuickLink Icon="👤" Label="Profil" Href="profile" />
     </div>
 
     @if (_activeTally is not null)
     {
-        <div class="oi-card" style="margin-bottom:14px;cursor:pointer;" @onclick='() => Nav.NavigateTo("/tally")'>
+        <div class="oi-card" style="margin-bottom:14px;cursor:pointer;" @onclick='() => Nav.NavigateTo("tally")'>
             <div style="display:flex;justify-content:space-between;align-items:center;">
                 <div class="oi-section-title" style="margin:0;">Bu həftənin çətələsi</div>
                 <span style="color:var(--green-700);font-weight:700;font-size:13px;">Bax →</span>

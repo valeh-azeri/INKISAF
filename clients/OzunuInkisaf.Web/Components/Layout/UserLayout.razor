@@ -15,23 +15,23 @@
     </div>
 
     <nav class="oi-bottom-nav">
-        <a href="/home" class="@ActiveClass("/home")">
+        <a href="home" class="@ActiveClass("/home")">
             <span class="icon">🏠</span>
             <span>Ana səhifə</span>
         </a>
-        <a href="/library" class="@ActiveClass("/library")">
+        <a href="library" class="@ActiveClass("/library")">
             <span class="icon">📚</span>
             <span>Kitabxana</span>
         </a>
-        <a href="/khatim" class="@ActiveClass("/khatim")">
+        <a href="khatim" class="@ActiveClass("/khatim")">
             <span class="icon">☾</span>
             <span>Xətim</span>
         </a>
-        <a href="/tally" class="@ActiveClass("/tally")">
+        <a href="tally" class="@ActiveClass("/tally")">
             <span class="icon">✓</span>
             <span>Çətələ</span>
         </a>
-        <a href="/profile" class="@ActiveClass("/profile")">
+        <a href="profile" class="@ActiveClass("/profile")">
             <span class="icon">👤</span>
             <span>Profil</span>
         </a>
@@ -46,13 +46,13 @@
     {
         if (!Auth.IsAuthenticated)
         {
-            Nav.NavigateTo("/login");
+            Nav.NavigateTo("login");
         }
     }
 
     private void ReturnToAdmin()
     {
         Auth.EndImpersonation();
-        Nav.NavigateTo("/admin/users");
+        Nav.NavigateTo("admin/users");
     }
 }

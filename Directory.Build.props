@@ -1,0 +1,18 @@
+<Project>
+
+  <!--
+    Some CI runners have a newer .NET SDK preinstalled alongside the pinned
+    one, and MSBuild resolves the highest available SDK regardless of PATH
+    order. That newer SDK's bundled workload manifest flags net8.0-android
+    (and any net8.0-* mobile TFM) as EOL and hard-fails the build — even for
+    projects like Contracts that don't target Android themselves but get
+    evaluated under an Android TargetFramework via a ProjectReference from
+    OzunuInkisaf.Maui. Disabling both checks repo-wide avoids re-fighting
+    this in every project that could end up in that reference graph.
+  -->
+  <PropertyGroup>
+    <CheckEolTargetFramework>false</CheckEolTargetFramework>
+    <CheckEolWorkloads>false</CheckEolWorkloads>
+  </PropertyGroup>
+
+</Project>

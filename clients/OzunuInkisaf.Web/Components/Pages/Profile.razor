@@ -16,7 +16,7 @@
     @if (Auth.IsAdmin)
     {
         <div style="margin-top:10px;">
-            <a href="/admin/dashboard" class="oi-btn oi-btn-outline oi-btn-sm">İdarə panelinə keç</a>
+            <a href="admin/dashboard" class="oi-btn oi-btn-outline oi-btn-sm">İdarə panelinə keç</a>
         </div>
     }
 </div>
@@ -92,6 +92,6 @@
     private void SignOut()
     {
         Auth.SignOut();
-        Nav.NavigateTo("/login");
+        Nav.NavigateTo("login");
     }
 }

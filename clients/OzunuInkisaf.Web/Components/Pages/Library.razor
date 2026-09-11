@@ -29,7 +29,7 @@ else
     <div style="display:flex;flex-direction:column;gap:10px;">
         @foreach (var book in _books)
         {
-            <div class="oi-card" style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;" @onclick='() => Nav.NavigateTo($"/reader/{book.Id}")'>
+            <div class="oi-card" style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;" @onclick='() => Nav.NavigateTo($"reader/{book.Id}")'>
                 <div>
                     <div class="heading" style="font-size:15px;">@book.Title</div>
                     @if (!string.IsNullOrEmpty(book.Author))

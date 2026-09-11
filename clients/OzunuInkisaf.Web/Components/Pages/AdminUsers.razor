@@ -340,7 +340,7 @@
         {
             var session = await Api.ImpersonateAsync(user.Id);
             Auth.BeginImpersonation(session);
-            Nav.NavigateTo("/home");
+            Nav.NavigateTo("home");
         }
         catch (ApiException ex)
         {

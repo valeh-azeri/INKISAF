@@ -4,7 +4,7 @@
 @inject IJSRuntime JS
 
 <div class="oi-topbar" style="margin:-16px -16px 16px -16px;display:flex;align-items:center;gap:10px;">
-    <span style="cursor:pointer;" @onclick='() => Nav.NavigateTo("/library")'>←</span>
+    <span style="cursor:pointer;" @onclick='() => Nav.NavigateTo("library")'>←</span>
     <div>
         <div class="title" style="font-size:16px;">@(_book?.Title ?? "Yüklənir...")</div>
         @if (_book?.Author is not null)
