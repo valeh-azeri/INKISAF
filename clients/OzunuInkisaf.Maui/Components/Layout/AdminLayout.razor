@@ -5,16 +5,19 @@
 <div class="oi-admin-shell">
     <aside class="oi-admin-sidebar">
         <div class="brand">Özünü İnkişaf · Admin</div>
-        <a href="/admin/dashboard" class="@ActiveClass("/admin/dashboard")">Dashboard</a>
-        <a href="/admin/books" class="@ActiveClass("/admin/books")">Kitablar</a>
-        <a href="/admin/users" class="@ActiveClass("/admin/users")">İstifadəçilər</a>
-        <a href="/admin/khatim" class="@ActiveClass("/admin/khatim")">Xətim</a>
-        <a href="/admin/tally" class="@ActiveClass("/admin/tally")">Çətələ</a>
-        <a href="/admin/duas" class="@ActiveClass("/admin/duas")">Dualar</a>
-        <a href="/admin/reports" class="@ActiveClass("/admin/reports")">Hesabatlar</a>
-        <div style="flex:1"></div>
-        <a href="/home" style="opacity:0.75;">← İstifadəçi görünüşünə keç</a>
-        <a href="#" @onclick="SignOut" @onclick:preventDefault="true">Çıxış</a>
+        <div class="oi-admin-navlinks">
+            <a href="/admin/dashboard" class="@ActiveClass("/admin/dashboard")">Dashboard</a>
+            <a href="/admin/books" class="@ActiveClass("/admin/books")">Kitablar</a>
+            <a href="/admin/users" class="@ActiveClass("/admin/users")">İstifadəçilər</a>
+            <a href="/admin/khatim" class="@ActiveClass("/admin/khatim")">Xətim</a>
+            <a href="/admin/tally" class="@ActiveClass("/admin/tally")">Çətələ</a>
+            <a href="/admin/duas" class="@ActiveClass("/admin/duas")">Dualar</a>
+            <a href="/admin/reports" class="@ActiveClass("/admin/reports")">Hesabatlar</a>
+        </div>
+        <div class="oi-admin-actions">
+            <a href="/home" style="opacity:0.75;">← İstifadəçi görünüşünə keç</a>
+            <a href="#" @onclick="SignOut" @onclick:preventDefault="true">Çıxış</a>
+        </div>
     </aside>
     <main class="oi-admin-main">
         @Body

@@ -102,6 +102,8 @@ a:hover { color: var(--gold-600); }
   display: flex; flex-direction: column; padding: 20px 14px;
 }
 .oi-admin-sidebar .brand { font-family: 'Lora', serif; font-size: 17px; color: white; margin-bottom: 22px; padding: 0 6px; }
+.oi-admin-navlinks { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+.oi-admin-actions { display: flex; flex-direction: column; }
 .oi-admin-sidebar a {
   color: var(--gold-100); padding: 11px 12px; border-radius: 10px; font-size: 13.5px; font-weight: 600;
   margin-bottom: 3px; display: block;
@@ -163,14 +165,21 @@ table.oi-table td { padding: 10px; border-bottom: 1px solid var(--border); }
 @media (max-width: 700px) {
   .oi-admin-shell { flex-direction: column; }
   .oi-admin-sidebar {
-    width: 100%; flex-direction: row; align-items: center; overflow-x: auto;
-    padding: 10px 12px; gap: 4px;
+    width: 100%; flex-direction: row; align-items: stretch; overflow: hidden;
+    padding: 0;
   }
   .oi-admin-sidebar .brand { display: none; }
   .oi-admin-sidebar a {
     white-space: nowrap; flex-shrink: 0; margin-bottom: 0;
   }
-  .oi-admin-sidebar > div[style*="flex:1"] { display: none; }
+  .oi-admin-navlinks {
+    flex-direction: row; overflow-x: auto; padding: 10px 8px; gap: 4px;
+  }
+  .oi-admin-actions {
+    flex-direction: row; flex-shrink: 0; align-items: center; gap: 4px;
+    padding: 10px 8px; border-left: 1px solid rgba(255,255,255,0.15);
+  }
+  .oi-admin-actions a:first-child { display: none; }
   .oi-admin-main { padding: 16px; }
   .oi-two-col { grid-template-columns: 1fr; }
 }
