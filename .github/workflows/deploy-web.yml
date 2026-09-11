@@ -1,0 +1,52 @@
+name: Deploy Web (PWA) to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "clients/OzunuInkisaf.Web/**"
+      - "src/OzunuInkisaf.Contracts/**"
+      - ".github/workflows/deploy-web.yml"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.404"
+
+      - name: Publish
+        run: dotnet publish clients/OzunuInkisaf.Web/OzunuInkisaf.Web.csproj -c Release -o publish_out
+
+      - name: Rewrite base href for GitHub Pages project path
+        run: sed -i 's|<base href="/" />|<base href="/INKISAF/" />|' publish_out/wwwroot/index.html
+
+      - name: Add SPA fallback for client-side routing
+        run: cp publish_out/wwwroot/index.html publish_out/wwwroot/404.html
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: publish_out/wwwroot
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
