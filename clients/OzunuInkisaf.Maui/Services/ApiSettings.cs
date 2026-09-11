@@ -8,12 +8,5 @@ namespace OzunuInkisaf.Maui.Services;
 /// </summary>
 public static class ApiSettings
 {
-    public static string BaseUrl =>
-#if ANDROID
-        "https://10.0.2.2:7001/";
-#elif IOS || MACCATALYST
-        "https://localhost:7001/";
-#else
-        "https://localhost:7001/";
-#endif
+    public static string BaseUrl => "https://ozunuinkisaf-api.azurewebsites.net/";
 }

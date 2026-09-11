@@ -34,3 +34,8 @@ Thumbs.db
 ## Secrets (never commit real connection strings/secrets)
 appsettings.Local.json
 *.pfx
+
+## Local publish/deploy artifacts
+publish_out/
+deploy.zip
+App_Data/
