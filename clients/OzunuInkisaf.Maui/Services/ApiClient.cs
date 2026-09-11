@@ -190,6 +190,9 @@ public class ApiClient
     public Task<CreateUserResult> ResetPasswordAsync(Guid userId) =>
         SendAsync<CreateUserResult>(() => _http.PostAsync($"api/users/{userId}/reset-password", null));
 
+    public Task<LoginResponse> ImpersonateAsync(Guid userId) =>
+        SendAsync<LoginResponse>(() => _http.PostAsync($"api/users/{userId}/impersonate", null));
+
     // ---- Reports (admin) ---------------------------------------------------
 
     public Task<AdminDashboardSummaryDto> GetDashboardSummaryAsync() =>

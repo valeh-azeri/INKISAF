@@ -19,13 +19,13 @@ public class KhatimService : IKhatimService
         _db = db;
     }
 
-    public async Task<KhatimCycleStatusDto2> GetCurrentStatusAsync(Guid currentUserId, CancellationToken cancellationToken = default)
+    public async Task<KhatimCycleStatusDto2> GetCurrentStatusAsync(Guid currentUserId, bool isAdmin, CancellationToken cancellationToken = default)
     {
         var cycle = await GetOrCreateCurrentCycleAsync(cancellationToken);
-        return await BuildStatusDtoAsync(cycle, currentUserId, cancellationToken);
+        return await BuildStatusDtoAsync(cycle, currentUserId, isAdmin, cancellationToken);
     }
 
-    public async Task<KhatimCycleStatusDto2> ClaimJuzAsync(Guid userId, ClaimJuzRequest request, CancellationToken cancellationToken = default)
+    public async Task<KhatimCycleStatusDto2> ClaimJuzAsync(Guid userId, ClaimJuzRequest request, bool isAdmin, CancellationToken cancellationToken = default)
     {
         ValidateJuzNumber(request.JuzNumber);
 
@@ -49,10 +49,10 @@ public class KhatimService : IKhatimService
 
         await _db.SaveChangesAsync(cancellationToken);
 
-        return await BuildStatusDtoAsync(cycle, userId, cancellationToken);
+        return await BuildStatusDtoAsync(cycle, userId, isAdmin, cancellationToken);
     }
 
-    public async Task<KhatimCycleStatusDto2> CompleteJuzAsync(Guid userId, CompleteJuzRequest request, CancellationToken cancellationToken = default)
+    public async Task<KhatimCycleStatusDto2> CompleteJuzAsync(Guid userId, CompleteJuzRequest request, bool isAdmin, CancellationToken cancellationToken = default)
     {
         ValidateJuzNumber(request.JuzNumber);
 
@@ -89,7 +89,7 @@ public class KhatimService : IKhatimService
             }
         }
 
-        return await BuildStatusDtoAsync(cycle, userId, cancellationToken);
+        return await BuildStatusDtoAsync(cycle, userId, isAdmin, cancellationToken);
     }
 
     public async Task<IReadOnlyList<KhatimHistoryItemDto>> GetHistoryAsync(CancellationToken cancellationToken = default)
@@ -151,7 +151,7 @@ public class KhatimService : IKhatimService
         return cycle;
     }
 
-    private async Task<KhatimCycleStatusDto2> BuildStatusDtoAsync(KhatimCycle cycle, Guid currentUserId, CancellationToken cancellationToken)
+    private async Task<KhatimCycleStatusDto2> BuildStatusDtoAsync(KhatimCycle cycle, Guid currentUserId, bool isAdmin, CancellationToken cancellationToken)
     {
         var userIds = cycle.JuzClaims.Where(j => j.UserId != null).Select(j => j.UserId!.Value).Distinct().ToList();
         var users = await _db.Users
@@ -164,9 +164,12 @@ public class KhatimService : IKhatimService
             .OrderBy(j => j.JuzNumber)
             .Select(j =>
             {
+                var isOwnClaim = j.UserId == currentUserId;
+                var canSeeIdentity = isAdmin || isOwnClaim;
+
                 string? fullName = null;
                 string? initials = null;
-                if (j.UserId is not null && users.TryGetValue(j.UserId.Value, out var user))
+                if (canSeeIdentity && j.UserId is not null && users.TryGetValue(j.UserId.Value, out var user))
                 {
                     fullName = user.FullName;
                     initials = BuildInitials(user.FullName);
@@ -177,7 +180,7 @@ public class KhatimService : IKhatimService
                     j.UserId,
                     fullName,
                     initials,
-                    j.UserId == currentUserId,
+                    isOwnClaim,
                     j.IsCompleted,
                     j.PageRangeStart,
                     j.PageRangeEnd);

@@ -3,6 +3,13 @@
 @inject AuthState Auth
 
 <div class="oi-app-shell">
+    @if (Auth.IsImpersonating)
+    {
+        <div style="background:var(--gold-100);color:var(--gold-600);padding:8px 14px;font-size:12.5px;display:flex;justify-content:space-between;align-items:center;">
+            <span>@Auth.FullName kimi baxırsınız</span>
+            <span class="oi-btn oi-btn-sm oi-btn-outline" @onclick="ReturnToAdmin">Adminə qayıt</span>
+        </div>
+    }
     <div class="oi-content">
         @Body
     </div>
@@ -41,5 +48,11 @@
         {
             Nav.NavigateTo("/login");
         }
+    }
+
+    private void ReturnToAdmin()
+    {
+        Auth.EndImpersonation();
+        Nav.NavigateTo("/admin/users", forceLoad: true);
     }
 }

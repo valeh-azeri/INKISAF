@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using OzunuInkisaf.Application.Services;
 using OzunuInkisaf.Application.Common.Interfaces;
+using OzunuInkisaf.Contracts.Auth;
 using OzunuInkisaf.Contracts.Users;
 
 namespace OzunuInkisaf.WebApi.Controllers;
@@ -16,11 +17,13 @@ namespace OzunuInkisaf.WebApi.Controllers;
 public class UsersController : ControllerBase
 {
     private readonly IUserService _userService;
+    private readonly IAuthService _authService;
     private readonly ICurrentUserService _currentUser;
 
-    public UsersController(IUserService userService, ICurrentUserService currentUser)
+    public UsersController(IUserService userService, IAuthService authService, ICurrentUserService currentUser)
     {
         _userService = userService;
+        _authService = authService;
         _currentUser = currentUser;
     }
 
@@ -69,6 +72,19 @@ public class UsersController : ControllerBase
     public async Task<ActionResult<CreateUserResult>> ResetPassword(Guid userId, CancellationToken cancellationToken)
     {
         var result = await _userService.ResetPasswordAsync(userId, cancellationToken);
+        return Ok(result);
+    }
+
+    /// <summary>
+    /// Admin-in bu istifadəçinin hesabına şifrəsini bilmədən birbaşa daxil
+    /// olması üçün onun adına bir token verir (məs. lazım olduqda şifrəsini
+    /// dəyişmək üçün). Client tərəf admin-in öz token-ini müvəqqəti saxlayıb
+    /// bu token-lə əvəzləyir, sonra "Adminə qayıt" ilə geri qayıda bilir.
+    /// </summary>
+    [HttpPost("{userId:guid}/impersonate")]
+    public async Task<ActionResult<LoginResponse>> Impersonate(Guid userId, CancellationToken cancellationToken)
+    {
+        var result = await _authService.ImpersonateAsync(userId, cancellationToken);
         return Ok(result);
     }
 }

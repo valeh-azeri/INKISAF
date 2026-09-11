@@ -27,6 +27,13 @@ public class AuthState
     public bool IsAuthenticated => !string.IsNullOrEmpty(AccessToken) && ExpiresAtUtc > DateTime.UtcNow;
     public bool IsAdmin => IsAuthenticated && Role == UserRoleDto.Admin;
 
+    /// <summary>
+    /// Admin "istifadəçi kimi daxil ol" edəndə öz sessiyasını burada saxlayır
+    /// ki, "Adminə qayıt" ilə geri dönə bilsin.
+    /// </summary>
+    private LoginResponse? _savedAdminSession;
+    public bool IsImpersonating => _savedAdminSession is not null;
+
     public event Action? Changed;
 
     public void SetFromLogin(LoginResponse response)
@@ -41,6 +48,23 @@ public class AuthState
         Changed?.Invoke();
 
         _ = PersistAsync();
+    }
+
+    /// <summary>Cari (admin) sessiyanı yaddaşda saxlayıb, hədəf istifadəçinin sessiyasına keçir.</summary>
+    public void BeginImpersonation(LoginResponse targetSession)
+    {
+        _savedAdminSession = new LoginResponse(AccessToken!, ExpiresAtUtc!.Value, UserId!.Value, FullName!, Username!, Role, false);
+        SetFromLogin(targetSession);
+    }
+
+    /// <summary>Impersonation-u bitirib admin-in öz sessiyasına qayıdır.</summary>
+    public void EndImpersonation()
+    {
+        if (_savedAdminSession is null) return;
+
+        var adminSession = _savedAdminSession;
+        _savedAdminSession = null;
+        SetFromLogin(adminSession);
     }
 
     public void SignOut()

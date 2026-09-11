@@ -51,6 +51,28 @@ public class AuthService : IAuthService
             user.MustChangePassword);
     }
 
+    public async Task<LoginResponse> ImpersonateAsync(Guid targetUserId, CancellationToken cancellationToken = default)
+    {
+        var user = await _db.Users.SingleOrDefaultAsync(u => u.Id == targetUserId, cancellationToken)
+            ?? throw new NotFoundException(nameof(Domain.Entities.User), targetUserId);
+
+        if (!user.IsActive)
+        {
+            throw new ValidationAppException("Bu istifadəçi deaktivdir.");
+        }
+
+        var (token, expiresAt) = _jwtTokenService.GenerateToken(user);
+
+        return new LoginResponse(
+            token,
+            expiresAt,
+            user.Id,
+            user.FullName,
+            user.Username,
+            (UserRoleDto)user.Role,
+            user.MustChangePassword);
+    }
+
     public async Task ChangePasswordAsync(Guid userId, ChangePasswordRequest request, CancellationToken cancellationToken = default)
     {
         var user = await _db.Users.SingleOrDefaultAsync(u => u.Id == userId, cancellationToken)

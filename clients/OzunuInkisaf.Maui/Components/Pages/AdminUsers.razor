@@ -1,6 +1,8 @@
 @page "/admin/users"
 @layout AdminLayout
 @inject ApiClient Api
+@inject AuthState Auth
+@inject NavigationManager Nav
 
 <h2 class="heading" style="margin-bottom:18px;">İstifadəçilər</h2>
 
@@ -119,6 +121,7 @@
                                     @(user.IsActive ? "Deaktiv et" : "Aktiv et")
                                 </span>
                                 <span class="oi-btn oi-btn-sm oi-btn-outline" @onclick="() => ResetPasswordAsync(user)">Şifrəni sıfırla</span>
+                                <span class="oi-btn oi-btn-sm oi-btn-gold" @onclick="() => ImpersonateAsync(user)">Bu istifadəçi kimi daxil ol</span>
                             </td>
                         </tr>
                     }
@@ -319,6 +322,24 @@
         catch
         {
             _loadError = "Şifrə sıfırlana bilmədi.";
+        }
+    }
+
+    private async Task ImpersonateAsync(UserSummaryDto user)
+    {
+        try
+        {
+            var session = await Api.ImpersonateAsync(user.Id);
+            Auth.BeginImpersonation(session);
+            Nav.NavigateTo("/", forceLoad: true);
+        }
+        catch (ApiException ex)
+        {
+            _loadError = ex.Message;
+        }
+        catch
+        {
+            _loadError = "Bu istifadəçi kimi daxil olmaq mümkün olmadı.";
         }
     }
 }

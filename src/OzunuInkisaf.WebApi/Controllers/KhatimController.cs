@@ -28,7 +28,7 @@ public class KhatimController : ControllerBase
     [HttpGet("status")]
     public async Task<ActionResult<KhatimCycleStatusDto2>> GetCurrentStatus(CancellationToken cancellationToken)
     {
-        var result = await _khatimService.GetCurrentStatusAsync(_currentUser.UserId!.Value, cancellationToken);
+        var result = await _khatimService.GetCurrentStatusAsync(_currentUser.UserId!.Value, _currentUser.IsAdmin, cancellationToken);
         return Ok(result);
     }
 
@@ -36,7 +36,7 @@ public class KhatimController : ControllerBase
     [HttpPost("claim")]
     public async Task<ActionResult<KhatimCycleStatusDto2>> ClaimJuz([FromBody] ClaimJuzRequest request, CancellationToken cancellationToken)
     {
-        var result = await _khatimService.ClaimJuzAsync(_currentUser.UserId!.Value, request, cancellationToken);
+        var result = await _khatimService.ClaimJuzAsync(_currentUser.UserId!.Value, request, _currentUser.IsAdmin, cancellationToken);
         return Ok(result);
     }
 
@@ -44,7 +44,7 @@ public class KhatimController : ControllerBase
     [HttpPost("complete")]
     public async Task<ActionResult<KhatimCycleStatusDto2>> CompleteJuz([FromBody] CompleteJuzRequest request, CancellationToken cancellationToken)
     {
-        var result = await _khatimService.CompleteJuzAsync(_currentUser.UserId!.Value, request, cancellationToken);
+        var result = await _khatimService.CompleteJuzAsync(_currentUser.UserId!.Value, request, _currentUser.IsAdmin, cancellationToken);
         return Ok(result);
     }
 
